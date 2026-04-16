@@ -31,6 +31,16 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
+    // ===== AI API 호출용 (Gemini) =====
+    implementation 'org.springframework.boot:spring-boot-starter-webflux' // WebClient
+    // ===== 모니터링/헬스체크 (배포 시 유용) =====
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // ===== 설정 메타데이터 =====
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    // ===== 테스트 =====
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
     runtimeOnly 'org.postgresql:postgresql'

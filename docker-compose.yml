@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    env_file: .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker-data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      org.springframework.boot.ignore: true
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./docker-data/redis:/data
+    labels:
+      org.springframework.boot.ignore: true
