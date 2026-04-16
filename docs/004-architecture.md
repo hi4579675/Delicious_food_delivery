@@ -1,11 +1,18 @@
-# Delivery 프로젝트 아키텍처 가이드
+# 004. 아키텍처 가이드
 
-> **팀원을 위한 가이드 문서**  
-> 폴더 구조를 보고 "뭘 공부해야 하지?", "이 코드 어디에 둬야 하지?" 고민될 때 이 문서를 보세요.
+> **이 문서를 보면**: 폴더 구조가 왜 이렇게 생겼는지, 어떤 코드를 어디에 둬야 하는지 파악 가능.
+>
+> **언제 다시 보나요**: 새 기능 구현 시, 파일 위치 헷갈릴 때, 신규 팀원 온보딩 시.
 
 ---
 
-## 📌 한눈에 보기
+## 한 줄 요약
+
+**Layered Architecture + Package by Feature**. 도메인별 폴더 + 그 안에서 `presentation / application / domain / infrastructure` 4계층. 정통 DDD/헥사고날은 **적용 X**.
+
+---
+
+## 한눈에 보기
 
 - **구조**: Layered Architecture + Package by Feature
 - **가이드 기준**: 튜터 권장 "Layered Architecture (Controller / Service / Repository)" 준수
@@ -27,11 +34,9 @@
 
 ---
 
-## 📚 팀원 학습 가이드
+## 팀원 학습 가이드
 
-처음 이 프로젝트에 합류했다면, 아래 순서로 공부하세요.
-
-### 🎓 학습 순서
+### 학습 순서
 
 #### 1. Layered Architecture + 의존성 방향
 **목표**: "계층이 한 방향으로만 의존한다"는 게 뭔지 이해
@@ -61,7 +66,7 @@
   2. `user/` 폴더 (가장 기본적인 도메인)
   3. 이 문서의 **"📖 도메인별 설명"** 섹션 정독
 
-### 🚫 공부하지 않아도 되는 것
+### 공부하지 않아도 되는 것
 
 - ❌ **정통 DDD** (Aggregate Root, Value Object, Ubiquitous Language 등)
   - 커리큘럼 가이드상 적용 X
@@ -70,7 +75,7 @@
 - ❌ **MSA, Saga Pattern, CQRS, Domain Event**
   - 지금은 모놀리스. 다음 프로젝트에서 집중 학습
 
-###  헷갈릴 때 하는 질문 순서
+### 헷갈릴 때 하는 질문 순서
 
 1. "내가 만드는 게 **어느 계층** 코드인가?" (컨트롤러? 서비스? 엔티티?)
 2. "이게 **어느 도메인**에 속하는가?" (user? order? store?)
@@ -78,9 +83,9 @@
 
 ---
 
-## 🎯 "이 코드 어디에 둬야 해?" 완전 가이드
+## "이 코드 어디에 둬야 해?" 완전 가이드
 
-### 📋 빠른 참조 치트시트
+###  빠른 참조 치트시트
 
 | 만들 것 | 위치 | 예시 |
 |---------|------|------|
@@ -98,7 +103,7 @@
 | BaseEntity (생성일/수정일) | `common/model/` | `BaseEntity` |
 | 전역 설정 | `common/config/{주제}/` | `SecurityConfig` |
 
-### 🤔 자주 헷갈리는 케이스
+### 자주 헷갈리는 케이스
 
 #### Q1. 비즈니스 규칙(검증 로직)은 어디에 두지?
 
@@ -223,20 +228,24 @@ presentation  →  application  →  domain
 
 ##  도메인별 설명
 
+> 아래 트리는 **현재 존재하는 폴더**만 반영. 각 폴더에 배치될 클래스는 구현 진행 중.
+
 ### 1. `common/` — 공통 모듈
 
 ```
 common/
 ├── config/
-│   └── security/   → SecurityConfig, 권한 설정
-├── response/       → ApiResponse<T>, PageResponse
-├── exception/      → GlobalExceptionHandler, BaseException
-└── model/          → BaseEntity (createdAt, updatedAt)
+│   └── security/
+├── exception/
+├── model/
+└── response/
 ```
 
-> **쓰는 시점**: 어느 도메인이든 가져다 쓰는 것들.
->
-> **필요할 때 생성**: `common/util/`, `common/validator/`, `common/enums/`, `common/config/{web,openapi,jpa}/` 등은 실제 필요해지면 추가.
+> - `config/security/` : SecurityConfig 등 보안 설정
+> - `exception/` : 전역 예외 핸들러, BaseException, ErrorCode
+> - `model/` : `BaseEntity`
+> - `response/` : 공통 응답 포맷
+> - 필요 시 추가: `util/`, `validator/`, `enums/`, `config/{web,openapi,jpa}/`
 
 ---
 
@@ -245,13 +254,15 @@ common/
 
 ```
 auth/
-├── presentation/       → AuthController (로그인, 토큰 재발급)
-├── application/        → AuthService (로그인 로직)
+├── presentation/
+├── application/
 ├── domain/
-│   └── exception/      → 인증 관련 예외
+│   └── exception/
 └── infrastructure/
-    └── jwt/            → JwtProvider, JwtFilter
+    └── jwt/
 ```
+
+> - `infrastructure/jwt/` : JWT 관련 구현 (Provider, Filter 등)
 
 ---
 
@@ -260,104 +271,59 @@ auth/
 
 ```
 user/
-├── presentation/       → UserController
-├── application/        → UserService (회원가입, 조회)
+├── presentation/
+├── application/
 ├── domain/
-│   ├── entity/         → User.java
-│   ├── repository/     → UserRepository (interface)
-│   └── exception/      → UserNotFoundException 등
+│   ├── entity/
+│   ├── repository/
+│   └── exception/
 └── infrastructure/
     └── persistence/
-        └── repository/ → UserRepositoryImpl (커스텀 쿼리)
+        └── repository/
 ```
 
 ---
 
 ### 4. `address/` — 배송지 모듈
-사용자의 배송지 CRUD.
+사용자의 배송지 CRUD. `user/`와 동일한 5계층 구조.
 
 ---
 
 ### 5. `region/` — 지역 모듈
-배달 가능 지역, 지역별 가게 필터링.
+배달 가능 지역, 지역별 가게 필터링. `user/`와 동일한 구조.
 
 ---
 
 ### 6. `store/` — 가게 모듈
-가게 등록, 조회, 검색.
+가게 등록, 조회, 검색. `user/`와 동일한 구조.
 
-```
-store/
-├── presentation/       → StoreController
-├── application/        → StoreService
-├── domain/
-│   ├── entity/         → Store
-│   ├── repository/
-│   └── exception/
-└── infrastructure/
-    └── persistence/
-        └── repository/ → StoreRepositoryImpl (검색 쿼리)
-```
+> - 검색/정렬 쿼리는 `infrastructure/persistence/repository/`에서 구현
 
 ---
 
 ### 7. `product/` — 메뉴/상품 모듈
-가게의 메뉴 관리.
+가게의 메뉴 관리. `user/`와 동일한 구조.
 
 ---
 
 ### 8. `order/` — 주문 모듈
-주문 생성, 상태 전이 (요청→수락→조리→배송→완료).
-
-```
-order/
-├── presentation/       → OrderController
-├── application/        → OrderService (주문 유스케이스 + 상태 전이 로직)
-├── domain/
-│   ├── entity/         → Order, OrderItem
-│   ├── repository/
-│   └── exception/
-└── infrastructure/
-    └── persistence/
-```
+주문 생성, 상태 전이. `user/`와 동일한 구조.
 
 > - 주문 플로우: `주문요청(CUSTOMER)` → `수락` → `조리완료` → `배송수령` → `배송완료+주문완료(OWNER)`
-> - 상태 전이 검증 로직은 `application/OrderService` 안에서 처리
+> - 상태 전이 검증 로직은 `application/` 서비스 안에서 처리
+> - `OrderItem`은 `Order`와 같은 Aggregate (컬렉션 매핑 예외 허용, [005. JPA 가이드](./005-jpa-guidelines.md) 2-3 참고)
 
 ---
 
 ### 9. `payment/` — 결제 모듈
-주문 결제 처리.
-
-```
-payment/
-├── presentation/       → PaymentController
-├── application/        → PaymentService
-├── domain/
-│   ├── entity/         → Payment
-│   ├── repository/
-│   └── exception/
-└── infrastructure/
-    └── persistence/
-```
+주문 결제 처리. `user/`와 동일한 구조.
 
 ---
 
 ### 10. `review/` — 리뷰/평점 모듈
+리뷰 작성, 가게 평균 평점 집계. `user/`와 동일한 구조.
 
-```
-review/
-├── presentation/       → ReviewController
-├── application/        → ReviewService
-├── domain/
-│   ├── entity/         → Review
-│   ├── repository/
-│   └── exception/
-└── infrastructure/
-    └── persistence/
-```
-
-> - 주문 완료 여부 체크는 `ReviewService`에서 `OrderService` 호출로 처리
+> - 주문 완료 여부 체크는 리뷰 서비스에서 주문 서비스를 호출하여 처리
 
 ---
 
@@ -365,21 +331,21 @@ review/
 
 ```
 ai/
-├── presentation/       → AiController
-├── application/        → AiService (프롬프트 가공 + Gemini 호출 조율)
+├── presentation/
+├── application/
 ├── domain/
-│   ├── entity/         → AiRequestLog (요청 이력, 선택)
+│   ├── entity/
 │   ├── repository/
 │   └── exception/
 └── infrastructure/
     ├── persistence/
     │   └── repository/
     └── external/
-        └── gemini/     → ⭐ GeminiClient (실제 API 호출)
+        └── gemini/
 ```
 
-> - `external/gemini/` = 실제 Gemini API 때리는 클라이언트
-> - 입력 글자수 제한 + "50자 이하로" 자동 추가는 `AiService`에서 처리
+> - `infrastructure/external/gemini/` : Gemini API 호출 클라이언트
+> - 입력 글자수 제한 + "50자 이하로" 자동 삽입은 `application/` 서비스에서 처리
 
 ---
 
