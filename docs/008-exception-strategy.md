@@ -1,364 +1,196 @@
-# 008. 예외 처리 전략 비교 및 선택 근거
+# 007. 공통 기반(Common Foundation) 사용 가이드
 
-> **이 문서를 보면**: 왜 개별 예외 클래스 방식을 선택했는지, 기존 방식과 뭐가 다른지, MSA에서 어떤 이점이 있는지 파악 가능.
+> **이 문서를 보면**: 공통 모듈에서 제공하는 응답 포맷 / 예외 처리 / 감사 필드 / 보안 뼈대를 내 도메인에서 어떻게 써야 하는지 파악 가능.
 >
-> **언제 다시 보나요**: 새 도메인 예외 설계 시, 팀원 온보딩 시, 면접 준비 시.
+> **언제 다시 보나요**: 새 도메인 착수 시, 예외 던지는 코드 처음 작성할 때, 컨트롤러 응답 감 안 잡힐 때.
 
 ---
 
 ## 한 줄 요약
 
-**ErrorCode enum은 그대로 유지하되, 예외를 던질 때는 개별 Exception 클래스를 사용한다.** 가독성·catch 세분화·MSA 대응 모두 개선.
+모든 엔티티는 `BaseEntity` 상속 / 모든 예외는 `BaseException` 상속 / 모든 컨트롤러 응답은 `ApiResponse` 포맷 / 페이지 응답은 `PageResponse.from(page)`.
 
 ---
 
-## 0. 예외 처리의 진화 과정
+## 목차
 
-이 프로젝트의 예외 처리는 3단계를 거쳐 발전했다. 각 단계의 문제점이 다음 단계의 설계 동기가 된다.
+- [1. 패키지 구조 복습](#1-패키지-구조-복습)
+- [2. 의존성 방향](#2-의존성-방향)
+- [3. 엔티티 만들 때](#3-엔티티-만들-때)
+- [4. 예외 던지는 방법](#4-예외-던지는-방법)
+- [5. 컨트롤러 응답 작성](#5-컨트롤러-응답-작성)
+- [6. common 패키지 활용법](#6-common-패키지-활용법)
 
-### 0단계: 중앙 Enum 하나로 모든 에러 관리
+---
 
-가장 단순한 접근. 프로젝트 전체에 `ErrorCode` enum 1개, `BusinessException` 1개만 존재.
+## 1. 패키지 구조 복습
 
-```java
-// 프로젝트 전체에서 쓰는 단일 enum
-public enum ErrorCode {
-    // 사용자
-    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER-001", "사용자를 찾을 수 없습니다."),
-    DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER-002", "이미 사용 중인 이메일입니다."),
-    // 주문
-    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER-001", "주문을 찾을 수 없습니다."),
-    CANCEL_TIME_EXCEEDED(HttpStatus.BAD_REQUEST, "ORDER-002", "취소 가능 시간이 지났습니다."),
-    // 가게
-    STORE_NOT_FOUND(HttpStatus.NOT_FOUND, "STORE-001", "가게를 찾을 수 없습니다."),
-    // ... 모든 도메인의 에러가 한 파일에 ...
-}
+구조는 2단계로 나뉩니다.
 
-// 예외 클래스도 1개
-public class BusinessException extends RuntimeException {
-    private final ErrorCode errorCode;
-}
+1. **도메인별 폴더** (user, order, store 등)
+2. 각 도메인 안에서 **4계층** (presentation / application / domain / infrastructure)
 
-// 서비스에서 사용
-throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-throw new BusinessException(ErrorCode.ORDER_NOT_FOUND);
+"새 코드 어디에 둘까?" 생각할 때 순서:
+
+- Q1. 어느 **도메인**? (user? order? store?)
+- Q2. 어느 **계층**? (컨트롤러? 서비스? 엔티티?)
+
+| 만들 것 | 위치 |
+|---|---|
+| REST API 메서드 | `{domain}/presentation/` |
+| Request/Response DTO | `{domain}/presentation/dto/` |
+| `@Service` | `{domain}/application/` |
+| `@Entity` | `{domain}/domain/entity/` |
+| Repository 인터페이스 | `{domain}/domain/repository/` |
+| 도메인 전용 예외 | `{domain}/domain/exception/` |
+| 커스텀 쿼리 구현체 | `{domain}/infrastructure/persistence/repository/` |
+
+> 더 자세한 위치 가이드는 [`docs/004-architecture.md`](./004-architecture.md) 참고.
+
+---
+
+## 2. 의존성 방향
+
+```
+presentation → application → domain ← infrastructure
 ```
 
-**문제점:**
-
-| 문제 | 설명 |
-|------|------|
-| **파일 비대화** | 도메인이 10개면 에러 코드가 수십 개 → enum 파일이 수백 줄 |
-| **Git 충돌** | 여러 명이 동시에 같은 enum 파일을 수정 → merge conflict 빈발 |
-| **도메인 경계 없음** | User 개발자가 Order 에러 코드를 실수로 던져도 컴파일 에러 없음 |
-| **MSA 분리 불가** | 하나의 enum에 모든 도메인이 묶여 있어 서비스 분리 시 전부 끌고 가야 함 |
-
-이 문제를 해결하기 위해 → **도메인별 ErrorCode enum 분리** (1단계)
+- 컨트롤러는 **서비스만** 호출
+- 서비스는 엔티티·Repository를 조합
+- Repository 구현체(infrastructure)는 `domain/repository/`의 인터페이스를 **구현**하고 엔티티를 반환 — **의존성 역전**
+- `domain`은 다른 계층을 **절대 모름**
 
 ---
 
-### 1단계: 도메인별 ErrorCode + 단일 Exception (이전 방식)
-
-ErrorCode를 도메인별로 분리하고, `ErrorCode` 인터페이스로 다형성 확보.
+## 3. 엔티티 만들 때
 
 ```java
-// 공통 인터페이스
-public interface ErrorCode {
-    HttpStatus getStatus();
-    String getCode();
-    String getMessage();
-}
+@Entity
+@Table(name = "p_store")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Store extends BaseEntity {   // 🔴 무조건 BaseEntity 상속
 
-// 도메인별 분리
-public enum UserErrorCode implements ErrorCode {
-    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER-001", "사용자를 찾을 수 없습니다."),
-    DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER-002", "이미 사용 중인 이메일입니다."),
+    @Id @GeneratedValue
+    private UUID storeId;
+
+    private Long userId;        // 🔴 @ManyToOne User 금지, Long FK 만
+    private UUID regionId;      // 🔴 @ManyToOne Region 금지
     // ...
 }
-
-public enum OrderErrorCode implements ErrorCode {
-    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER-001", "주문을 찾을 수 없습니다."),
-    // ...
-}
-
-// 도메인별 예외 (1개)
-public class UserException extends BaseException {
-    public UserException(UserErrorCode errorCode) {
-        super(errorCode);
-    }
-}
-
-// 서비스에서 사용
-throw new UserException(UserErrorCode.USER_NOT_FOUND);
 ```
 
-**0단계 대비 개선된 점:**
-- 도메인별 파일 분리 → Git 충돌 감소
-- 타 도메인 ErrorCode 사용 방지 (UserException은 UserErrorCode만 받음)
-- MSA 분리 시 도메인별 enum만 가져가면 됨
+**지키면 되는 것**
 
-**남은 문제점:**
+- `createdAt / updatedAt / deletedAt / createdBy / updatedBy / deletedBy`는 **작성하지 않음** — `BaseEntity`가 자동 관리
+- 삭제 시 `store.softDelete(currentUserId)` 호출 (물리 삭제 금지)
+- 다른 도메인 엔티티는 **Long/UUID FK 로만** 참조
+- 모든 연관관계는 `LAZY`
 
-| 문제 | 설명 |
-|------|------|
-| **catch 불가** | `catch (UserException e)` — 어떤 에러인지 if문으로 재분기 필요 |
-| **로그 식별 어려움** | 전부 `UserException`으로 찍힘 → 메시지까지 읽어야 구분 |
-| **코드 장황** | `() -> new UserException(UserErrorCode.USER_NOT_FOUND)` — 길다 |
-
-이 문제를 해결하기 위해 → **개별 예외 클래스** (2단계, 현재)
+> 세부 규칙은 [`docs/005-jpa-guidelines.md`](./005-jpa-guidelines.md) 참고.
 
 ---
 
-### 2단계: 도메인별 ErrorCode + 개별 Exception (현재 채택)
+## 4. 예외 던지는 방법
 
-ErrorCode enum은 유지하면서, 예외를 던질 때는 개별 클래스 사용.
+**제일 자주 하게 되는 작업.** 3단계로 정리.
+
+### Step 1. 도메인 ErrorCode enum 작성
+
+위치: `{domain}/domain/exception/{Domain}ErrorCode.java`
 
 ```java
-// ErrorCode — 1단계와 동일하게 유지
+// 예: user/domain/exception/UserErrorCode.java
+@Getter
+@RequiredArgsConstructor
 public enum UserErrorCode implements ErrorCode {
+
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER-001", "사용자를 찾을 수 없습니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER-002", "이미 사용 중인 이메일입니다."),
-}
+    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "USER-003", "비밀번호가 올바르지 않습니다."),
+    FORBIDDEN_ROLE_CHANGE(HttpStatus.FORBIDDEN, "USER-004", "권한을 변경할 수 없습니다."),
+    ;
 
-// 개별 예외 클래스
+    private final HttpStatus status;
+    private final String code;
+    private final String message;
+}
+```
+
+> 코드 네이밍 규칙: `{DOMAIN}-{001부터}` (예: `USER-001`, `AUTH-001`, `ORDER-001`)
+
+### Step 2. 개별 예외 클래스 작성
+
+위치: `{domain}/domain/exception/{예외이름}Exception.java`
+
+**ErrorCode 하나당 예외 클래스 하나.** 서비스에서 던질 때 의미가 바로 드러남.
+
+```java
+// user/domain/exception/UserNotFoundException.java
 public class UserNotFoundException extends BaseException {
     public UserNotFoundException() {
         super(UserErrorCode.USER_NOT_FOUND);
     }
 }
 
-// 서비스에서 사용
-throw new UserNotFoundException();
-```
-
-**1단계 대비 개선된 점:**
-- 특정 예외만 catch 가능
-- 로그에서 클래스명으로 즉시 식별
-- 메서드 레퍼런스 사용 가능 (`UserNotFoundException::new`)
-
----
-
-### 진화 요약
-
-```
-0단계: 중앙 ErrorCode 1개 + BusinessException 1개
-  → 문제: 파일 비대화, Git 충돌, 도메인 경계 없음
-  
-1단계: 도메인별 ErrorCode + 도메인별 Exception 1개
-  → 개선: 도메인 분리, MSA 대비
-  → 문제: catch 불가, 로그 식별 어려움
-
-2단계: 도메인별 ErrorCode + 개별 Exception 클래스 (현재)
-  → 개선: catch 세분화, 가독성, 모니터링
-```
-
----
-
-## 1. 두 가지 방식 비교
-
-### 방식 A: 단일 Exception + ErrorCode enum (기존)
-
-```java
-// 예외 클래스 1개
-public class UserException extends BaseException {
-    public UserException(UserErrorCode errorCode) {
-        super(errorCode);
-    }
-}
-
-// 서비스에서 사용
-throw new UserException(UserErrorCode.USER_NOT_FOUND);
-throw new UserException(UserErrorCode.DUPLICATE_EMAIL);
-throw new UserException(UserErrorCode.INVALID_PASSWORD);
-```
-
-### 방식 B: 개별 Exception 클래스 (현재 채택)
-
-```java
-// 예외 클래스 N개 — 각각 하나의 ErrorCode에 매핑
-public class UserNotFoundException extends BaseException {
-    public UserNotFoundException() {
-        super(UserErrorCode.USER_NOT_FOUND);
-    }
-}
-
+// user/domain/exception/DuplicateEmailException.java
 public class DuplicateEmailException extends BaseException {
     public DuplicateEmailException() {
         super(UserErrorCode.DUPLICATE_EMAIL);
     }
 }
 
-// 서비스에서 사용
-throw new UserNotFoundException();
-throw new DuplicateEmailException();
-```
-
----
-
-## 2. 상세 비교
-
-| 항목 | 방식 A (단일 Exception) | 방식 B (개별 Exception) |
-|------|------------------------|------------------------|
-| **파일 수** | ErrorCode 1개 + Exception 1개 = 2개 | ErrorCode 1개 + Exception N개 = N+1개 |
-| **서비스 코드** | `throw new UserException(UserErrorCode.USER_NOT_FOUND)` | `throw new UserNotFoundException()` |
-| **메서드 레퍼런스** | `() -> new UserException(UserErrorCode.USER_NOT_FOUND)` | `UserNotFoundException::new` |
-| **가독성** | ErrorCode까지 읽어야 의미 파악 | 클래스명만으로 즉시 파악 |
-| **특정 예외 catch** | 불가능 (전부 UserException) | 가능 (`catch (UserNotFoundException e)`) |
-| **로그 식별** | `UserException` — 뭔 에러인지 모름 | `UserNotFoundException` — 바로 식별 |
-| **GlobalExceptionHandler** | 동일 (BaseException으로 처리) | 동일 (BaseException으로 처리) |
-| **ErrorCode enum** | 사용 | 동일하게 사용 |
-
----
-
-## 3. 방식 B를 선택한 이유
-
-### 3-1. 서비스 코드 가독성
-
-```java
-// 방식 A — 읽을 때 ErrorCode까지 눈이 가야 함
-User user = userRepository.findById(userId)
-        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-
-// 방식 B — 클래스명이 곧 의미
-User user = userRepository.findById(userId)
-        .orElseThrow(UserNotFoundException::new);
-```
-
-### 3-2. 특정 예외만 catch 가능 (+ MSA에서의 이점)
-
-MSA 환경에서 다른 서비스를 호출할 때, 특정 에러에만 대응해야 하는 경우가 많다.
-
-```java
-// 방식 B — 특정 예외만 잡을 수 있음
-try {
-    userClient.getUser(userId);
-} catch (UserNotFoundException e) {
-    // 사용자 없으면 게스트로 처리
-    return GuestUser.create();
-} catch (TokenExpiredException e) {
-    // 토큰 만료면 재발급 시도
-    tokenService.refresh();
-}
-
-// 방식 A — if문으로 다시 분기해야 함
-try {
-    userClient.getUser(userId);
-} catch (UserException e) {
-    if (e.getErrorCode() == UserErrorCode.USER_NOT_FOUND) {
-        return GuestUser.create();
-    }
-    throw e;  // 나머지는 다시 던짐
-}
-```
-
-**MSA에서 더 중요해지는 이유:** 서비스 간 통신 시 상대 서비스의 에러를 번역해야 한다. 이때 `ErrorCode 문자열("USER-001")` + `HTTP status(404)` + `Exception 클래스명(UserNotFoundException)` 세 가지를 조합해서 에러 정책을 세우게 되는데, 예외 클래스명이 구체적일수록 정책 수립이 쉽다. 예를 들어 "User 서비스에서 `UserNotFoundException`이 오면 fallback, `DuplicateEmailException`이 오면 재시도 없이 즉시 실패" 같은 규칙을 클래스명 기준으로 깔끔하게 정의할 수 있다.
-
-### 3-3. 로그/모니터링 식별
-
-운영 환경에서 에러 로그를 볼 때:
-
-```
-// 방식 A — 로그만 봐선 뭔 에러인지 모름, 메시지까지 읽어야 함
-ERROR UserException: 사용자를 찾을 수 없습니다.
-ERROR UserException: 이미 사용 중인 이메일입니다.
-ERROR UserException: 비밀번호가 올바르지 않습니다.
-
-// 방식 B — 클래스명만으로 즉시 분류 가능
-ERROR UserNotFoundException: 사용자를 찾을 수 없습니다.
-ERROR DuplicateEmailException: 이미 사용 중인 이메일입니다.
-ERROR InvalidPasswordException: 비밀번호가 올바르지 않습니다.
-```
-
-Grafana, Sentry 같은 모니터링 도구에서 예외 클래스명 기준으로 알림을 설정할 수 있다.
-
-### 3-4. Spring 프레임워크와 동일한 패턴
-
-Spring Security도 개별 예외 클래스 방식을 사용한다:
-
-```
-AuthenticationException (추상)
-├── BadCredentialsException        // 비밀번호 틀림
-├── UsernameNotFoundException      // 사용자 없음
-├── AccountExpiredException        // 계정 만료
-├── LockedException                // 계정 잠김
-└── DisabledException              // 계정 비활성화
-```
-
-우리 구조도 동일한 패턴:
-
-```
-BaseException (추상)
-├── UserNotFoundException
-├── DuplicateEmailException
-├── InvalidPasswordException
-├── InvalidRoleException
-├── ForbiddenRoleChangeException
-├── InvalidCredentialsException    // (auth)
-├── TokenExpiredException          // (auth)
-└── ...
-```
-
-### 3-5. Layered Architecture에서도 일반적인 패턴
-
-이 프로젝트는 정통 DDD/헥사고날이 아닌 Layered Architecture를 채택하고 있다. "개별 예외 클래스까지 나누는 게 과한 것 아닌가?"라는 의문이 들 수 있지만, 이건 **도메인 모델의 세분화가 아니라 예외 레이어의 세분화**다. Spring 프레임워크 자체가 Layered Architecture 기반이면서도 위처럼 예외를 세분화하고 있으므로, Layered Architecture에서도 일반적으로 사용되는 패턴이다.
-
----
-
-## 4. "예외 클래스가 너무 많아지는 거 아닌가?"
-
-맞다. 개별 예외 클래스 방식의 가장 흔한 반론이 **파일 수 증가**다. 이에 대한 원칙:
-
-> **"비즈니스 의미가 다른 것만 쪼갠다."**
-
-| 쪼개야 하는 경우 | 쪼개지 않는 경우 |
-|---|---|
-| `UserNotFoundException` — 사용자 없음 | 단순 validation 실패 (`@NotBlank`, `@Size` 등) |
-| `DuplicateEmailException` — 이메일 중복 | → 공통 `COMMON-001`로 처리 (GlobalExceptionHandler) |
-| `CancelTimeExceededException` — 취소 시간 초과 | 범용적인 입력값 오류 |
-
-**기준:** catch해서 다른 행동을 해야 하거나, 로그에서 별도로 추적해야 하면 쪼갠다. 그냥 "잘못된 입력"이면 공통 validation으로 충분하다.
-
-실제로 도메인당 예외 클래스는 보통 3~6개 수준이다. 수십 개가 되고 있다면 도메인을 더 분리해야 한다는 신호다.
-
----
-
-## 5. 전체 구조가 동작하는 원리
-
-### BaseException의 역할
-
-`BaseException`은 모든 도메인 예외의 부모 클래스로, **ErrorCode를 들고 있다.**
-
-```java
-public abstract class BaseException extends RuntimeException {
-    private final ErrorCode errorCode;  // ← 에러 코드/상태/메시지를 가진 인터페이스
-
-    protected BaseException(ErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
+// user/domain/exception/InvalidPasswordException.java
+public class InvalidPasswordException extends BaseException {
+    public InvalidPasswordException() {
+        super(UserErrorCode.INVALID_PASSWORD);
     }
 }
 ```
 
-`GlobalExceptionHandler`는 `BaseException`을 잡아서 ErrorCode 기반으로 HTTP 응답을 자동 생성한다.
+### Step 3. 서비스에서 throw
 
 ```java
-@ExceptionHandler(BaseException.class)
-public ResponseEntity<ApiResponse<Void>> handleBase(BaseException e) {
-    ErrorCode ec = e.getErrorCode();
-    return ResponseEntity.status(ec.getStatus()).body(ApiResponse.error(ec));
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Transactional
+    public UserResponse signup(SignupRequest request) {
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateEmailException();
+        }
+
+        User user = User.builder()
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .name(request.name())
+                .phone(request.phone())
+                .role(UserRole.valueOf(request.role().toUpperCase()))
+                .build();
+
+        return UserResponse.from(userRepository.save(user));
+    }
+
+    public UserResponse getUserById(Long userId) {
+        User user = userRepository.findById(userId)
+                .filter(u -> !u.isDeleted())
+                .orElseThrow(UserNotFoundException::new);
+
+        return UserResponse.from(user);
+    }
 }
 ```
 
-### 전체 흐름
+> 💡 `GlobalExceptionHandler`가 `BaseException`을 다형 처리하므로 **컨트롤러에 try-catch 필요 없음**.
 
-```
-서비스: throw new UserNotFoundException()
-  → UserNotFoundException은 BaseException을 상속
-  → 내부에 UserErrorCode.USER_NOT_FOUND를 가지고 있음
-  → GlobalExceptionHandler가 BaseException으로 catch
-  → ErrorCode에서 status(404), code("USER-001"), message를 꺼냄
-  → ApiResponse.error(ec)로 통일된 JSON 응답 생성
-```
+### 응답 확인
+
+아래 포맷으로 자동 내려감:
 
 ```json
 {
@@ -370,71 +202,161 @@ public ResponseEntity<ApiResponse<Void>> handleBase(BaseException e) {
 }
 ```
 
-새로운 도메인 예외를 아무리 추가해도 **GlobalExceptionHandler는 수정할 필요 없다.** BaseException을 상속하기만 하면 자동으로 처리된다.
+### 자주 묻는 것
+
+- **Q. `@Valid` 검증 실패도 따로 처리해야 하나요?**
+  → 아니요. `GlobalExceptionHandler`가 자동으로 `COMMON-001` + 필드 에러 목록으로 내려줍니다.
+- **Q. 공통 예외(인증/인가/404 등)도 따로 만들어야 하나요?**
+  → 아니요. `CommonErrorCode` + `CommonException`이 이미 준비돼 있습니다. 꼭 도메인 고유 의미가 있을 때만 새 enum 추가.
+- **Q. 왜 단일 `UserException` 대신 개별 클래스?**
+  → `throw new UserNotFoundException()`이 `throw new UserException(UserErrorCode.USER_NOT_FOUND)`보다 읽기 쉽고, catch할 때도 특정 예외만 잡을 수 있음.
 
 ---
 
-## 6. ErrorCode enum을 유지하는 이유
+## 5. 컨트롤러 응답 작성
 
-> 개별 예외 클래스를 쓰는데 ErrorCode enum이 왜 필요한가?
+모든 컨트롤러 메서드는 **`ResponseEntity<ApiResponse<T>>`** 로 반환합니다.
 
-개별 예외 클래스를 쓰더라도 ErrorCode enum은 **삭제하지 않는다.** 이유:
-
-1. **클라이언트(프론트엔드) 식별용**: 프론트는 HTTP 상태 코드만으로 에러를 구분할 수 없음. `"USER-001"` 같은 코드로 에러별 UI 분기 처리
-2. **에러 코드 한눈에 관리**: enum 파일 하나에 해당 도메인의 모든 에러가 정리됨
-3. **GlobalExceptionHandler 호환**: `BaseException.getErrorCode()`로 응답을 자동 생성
-
-```
-ErrorCode enum     → 에러 코드/메시지/상태 정의 (한 곳에서 관리)
-개별 Exception     → 서비스에서 던지고 catch하는 용도 (가독성/세분화)
-GlobalExceptionHandler → BaseException 다형성으로 자동 처리 (건드릴 일 없음)
-```
-
----
-
-## 7. 새 예외 추가 시 체크리스트
-
-1. `{Domain}ErrorCode` enum에 새 코드 추가
-2. 개별 예외 클래스 생성 (`{도메인}/domain/exception/`)
-3. 서비스에서 `.orElseThrow(XxxException::new)` 또는 `throw new XxxException()` 사용
-4. 끝. GlobalExceptionHandler가 자동 처리.
-
-### 예시: 주문 도메인에 예외 추가
+> HTTP 상태 코드와 `ApiResponse.status` 를 일치시키기 위해 `ResponseEntity` 로 감싸는 게 팀 컨벤션.
+> `GlobalExceptionHandler` 도 같은 시그니처라 예외 응답과 정상 응답의 구조가 동일합니다.
 
 ```java
-// 1. ErrorCode
-public enum OrderErrorCode implements ErrorCode {
-    ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER-001", "주문을 찾을 수 없습니다."),
-    CANCEL_TIME_EXCEEDED(HttpStatus.BAD_REQUEST, "ORDER-002", "주문 취소 가능 시간(5분)이 지났습니다."),
-    ;
-    // ...
-}
+@Tag(name = "User", description = "사용자 API")
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+public class UserController {
 
-// 2. 개별 예외
-public class OrderNotFoundException extends BaseException {
-    public OrderNotFoundException() {
-        super(OrderErrorCode.ORDER_NOT_FOUND);
+    private final UserService userService;
+
+    // 생성 (201)
+    @Operation(summary = "회원가입")
+    @PostMapping("/signup")
+    public ResponseEntity<ApiResponse<UserResponse>> signup(@Valid @RequestBody SignupRequest request) {
+        UserResponse response = userService.signup(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created(response));
     }
-}
 
-public class CancelTimeExceededException extends BaseException {
-    public CancelTimeExceededException() {
-        super(OrderErrorCode.CANCEL_TIME_EXCEEDED);
+    // 단건 조회 (200)
+    @Operation(summary = "마이페이지 조회")
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> getMyInfo(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success(userService.getUserById(principal.getId())));
     }
-}
 
-// 3. 서비스
-Order order = orderRepository.findById(orderId)
-        .orElseThrow(OrderNotFoundException::new);
+    // 수정 (200)
+    @Operation(summary = "내 정보 수정")
+    @PutMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> updateMyInfo(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody UserUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(userService.updateUser(principal.getId(), request)));
+    }
 
-if (order.isOverCancelDeadline()) {
-    throw new CancelTimeExceededException();
+    // 데이터 없는 성공 (200)
+    @Operation(summary = "회원 탈퇴")
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> deleteMyAccount(@AuthenticationPrincipal UserPrincipal principal) {
+        userService.deleteUser(principal.getId());
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    // 페이지네이션 (관리자)
+    @Operation(summary = "사용자 목록 검색 (관리자)")
+    @PreAuthorize("hasAnyRole('MANAGER', 'MASTER')")
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> searchUsers(
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(userService.searchUsers(pageable)));
+    }
 }
 ```
+
+**지키면 되는 것**
+
+- ⚠️ **엔티티를 그대로 반환하지 말 것.** 반드시 Response DTO 로 변환 (`UserResponse.from(user)` 같은 static factory 권장)
+- ⚠️ 정적 팩토리는 목적에 맞게: `ApiResponse.success(data)` / `ApiResponse.ok()` / `ApiResponse.created(data)`
+- ⚠️ 생성(POST) 응답은 `ResponseEntity.status(HttpStatus.CREATED).body(...)` 로 HTTP 201 명시
+- ⚠️ 페이지는 항상 `PageResponse.from(page)` 로 변환 (Spring `Page` 직노출 금지)
+- ⚠️ Swagger 어노테이션: 컨트롤러에 `@Tag`, 메서드에 `@Operation(summary = "...")` 필수
+- ⚠️ 인증 필요한 API는 `@AuthenticationPrincipal UserPrincipal principal` 로 사용자 정보 주입
+- ⚠️ 권한 제한은 `@PreAuthorize("hasRole('MASTER')")` 또는 `hasAnyRole(...)` 사용
+
+### 성공 응답 예시
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "errorCode": null,
+  "message": "OK",
+  "data": { "userId": 1, "email": "user@example.com", "name": "alice" }
+}
+```
+
+### 페이지 응답 예시
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "errorCode": null,
+  "message": "OK",
+  "data": {
+    "content": [ { "..." }, { "..." } ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 42,
+    "totalPages": 5,
+    "last": false
+  }
+}
+```
+
+---
+
+## 6. common 패키지 활용법
+
+공통으로 쓰는 것들은 전부 `common/` 아래에 있습니다.
+
+| 클래스 | 위치 | 용도 |
+|---|---|---|
+| `BaseEntity` | `common/model/` | 모든 엔티티가 상속 (감사 필드 + soft delete) |
+| `ApiResponse` | `common/response/` | 모든 컨트롤러 응답 포맷 |
+| `PageResponse` | `common/response/` | 페이지네이션 응답 변환 |
+| `ErrorCode` | `common/exception/` | 도메인별 ErrorCode enum이 구현할 인터페이스 |
+| `BaseException` | `common/exception/` | 모든 도메인 예외의 부모 |
+| `CommonErrorCode` / `CommonException` | `common/exception/` | 공통 예외(입력값 오류, 인증 실패 등) |
+| `GlobalExceptionHandler` | `common/exception/` | 전역 예외 처리 (건드릴 일 없음) |
+| `JpaAuditingConfig` | `common/config/jpa/` | `@CreatedBy` / `@LastModifiedBy` 자동 채움 |
+| `SecurityConfig` | `common/config/security/` | 전역 보안 설정 (JWT 필터는 auth 담당자) |
+| `UserPrincipal` | `common/config/security/` | auth 쪽에서 구현할 인증 주체 인터페이스 |
+
+### 꼭 기억할 것
+
+- `common/` 은 **모든 도메인이 의존** — 여기서 뭘 바꾸면 전 도메인 영향. 건드릴 때 팀에 공유
+- 내 도메인 전용 Util/Enum/Validator 는 `common/` 이 아니라 `{domain}/` 안에 두기
+- 여러 도메인에서 **실제로 쓰게 된 시점**에 `common/` 으로 승격
+
+---
+
+## 체크리스트 (새 도메인 착수 시)
+
+- [ ] 엔티티가 `BaseEntity` 를 상속했는가
+- [ ] 연관관계는 Long/UUID FK 만 사용했는가 (`@ManyToOne {다른도메인엔티티}` 금지)
+- [ ] `{Domain}ErrorCode` enum을 작성했는가
+- [ ] ErrorCode 하나당 개별 예외 클래스를 작성했는가 (예: `UserNotFoundException`)
+- [ ] 서비스에서 `.orElseThrow(XxxException::new)` 패턴으로 던지는가
+- [ ] 컨트롤러는 `ResponseEntity<ApiResponse<T>>` 로 반환하는가
+- [ ] Swagger 어노테이션(`@Tag`, `@Operation`)을 달았는가
+- [ ] 엔티티를 컨트롤러까지 올리지 않고 Response DTO 로 변환했는가
+- [ ] 페이지 조회는 `PageResponse.from(page)` 로 변환했는가
 
 ---
 
 ## 관련 문서
 
-- [007. 공통 기반 가이드](./007-common-foundation-guide.md) — 예외 사용법 상세
-- [004. 아키텍처 가이드](./004-architecture.md) — 계층별 역할
+- [004. 아키텍처 가이드](./004-architecture.md)
+- [005. JPA 가이드](./005-jpa-guidelines.md)
+- [006. 팀 협업 컨벤션](./006-conventions.md)
