@@ -38,7 +38,8 @@
 | 만들 것 | 위치 |
 |---|---|
 | REST API 메서드 | `{domain}/presentation/` |
-| Request/Response DTO | `{domain}/presentation/dto/` |
+| Request DTO (웹 검증용) | `{domain}/presentation/dto/` |
+| Command/Response DTO (서비스용) | `{domain}/application/dto/` |
 | `@Service` | `{domain}/application/` |
 | `@Entity` | `{domain}/domain/entity/` |
 | Repository 인터페이스 | `{domain}/domain/repository/` |
@@ -93,7 +94,7 @@ public class Store extends BaseEntity {   // 🔴 무조건 BaseEntity 상속
 
 ## 4. 예외 던지는 방법
 
-**제일 자주 하게 되는 작업.** 4단계로 정리.
+**제일 자주 하게 되는 작업.** 3단계로 정리.
 
 ### Step 1. 도메인 ErrorCode enum 작성
 
@@ -106,7 +107,9 @@ public class Store extends BaseEntity {   // 🔴 무조건 BaseEntity 상속
 public enum UserErrorCode implements ErrorCode {
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER-001", "사용자를 찾을 수 없습니다."),
-    DUPLICATE_USERNAME(HttpStatus.CONFLICT, "USER-002", "이미 사용 중인 아이디입니다."),
+    DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER-002", "이미 사용 중인 이메일입니다."),
+    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "USER-003", "비밀번호가 올바르지 않습니다."),
+    FORBIDDEN_ROLE_CHANGE(HttpStatus.FORBIDDEN, "USER-004", "권한을 변경할 수 없습니다."),
     ;
 
     private final HttpStatus status;
@@ -115,22 +118,33 @@ public enum UserErrorCode implements ErrorCode {
 }
 ```
 
-> 코드 네이밍 규칙: `{DOMAIN}-{001부터}` (예: `USER-001`, `ORDER-001`, `STORE-001`)
+> 코드 네이밍 규칙: `{DOMAIN}-{001부터}` (예: `USER-001`, `AUTH-001`, `ORDER-001`)
 
-### Step 2. 도메인 예외 클래스 작성
+### Step 2. 개별 예외 클래스 작성
 
-위치: `{domain}/domain/exception/{Domain}Exception.java`
+위치: `{domain}/domain/exception/{예외이름}Exception.java`
+
+**ErrorCode 하나당 예외 클래스 하나.** 서비스에서 던질 때 의미가 바로 드러남.
 
 ```java
-// 예: user/domain/exception/UserException.java
-public class UserException extends BaseException {
-
-    public UserException(UserErrorCode errorCode) {
-        super(errorCode);
+// user/domain/exception/UserNotFoundException.java
+public class UserNotFoundException extends BaseException {
+    public UserNotFoundException() {
+        super(UserErrorCode.USER_NOT_FOUND);
     }
+}
 
-    public UserException(UserErrorCode errorCode, String customMessage) {
-        super(errorCode, customMessage);
+// user/domain/exception/DuplicateEmailException.java
+public class DuplicateEmailException extends BaseException {
+    public DuplicateEmailException() {
+        super(UserErrorCode.DUPLICATE_EMAIL);
+    }
+}
+
+// user/domain/exception/InvalidPasswordException.java
+public class InvalidPasswordException extends BaseException {
+    public InvalidPasswordException() {
+        super(UserErrorCode.INVALID_PASSWORD);
     }
 }
 ```
@@ -139,23 +153,46 @@ public class UserException extends BaseException {
 
 ```java
 @Service
-@Transactional
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserResponse getUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-        return UserResponse.from(user);
+    @Transactional
+    public UserInfo signup(SignupCommand command) {
+        if (userRepository.existsByEmail(command.email())) {
+            throw new DuplicateEmailException();
+        }
+
+        User user = User.builder()
+                .email(command.email())
+                .password(passwordEncoder.encode(command.password()))
+                .name(command.name())
+                .phone(command.phone())
+                .role(parseRole(command.role()))
+                .build();
+
+        return UserInfo.from(userRepository.save(user));
+    }
+
+    public UserInfo getUserById(Long userId) {
+        User user = getActiveUser(userId);
+        return UserInfo.from(user);
+    }
+
+    private User getActiveUser(Long userId) {
+        return userRepository.findById(userId)
+                .filter(u -> !u.isDeleted())
+                .orElseThrow(UserNotFoundException::new);
     }
 }
 ```
 
 > 💡 `GlobalExceptionHandler`가 `BaseException`을 다형 처리하므로 **컨트롤러에 try-catch 필요 없음**.
 
-### Step 4. 응답 확인
+### 응답 확인
 
 아래 포맷으로 자동 내려감:
 
@@ -175,6 +212,8 @@ public class UserService {
   → 아니요. `GlobalExceptionHandler`가 자동으로 `COMMON-001` + 필드 에러 목록으로 내려줍니다.
 - **Q. 공통 예외(인증/인가/404 등)도 따로 만들어야 하나요?**
   → 아니요. `CommonErrorCode` + `CommonException`이 이미 준비돼 있습니다. 꼭 도메인 고유 의미가 있을 때만 새 enum 추가.
+- **Q. 왜 단일 `UserException` 대신 개별 클래스?**
+  → `throw new UserNotFoundException()`이 `throw new UserException(UserErrorCode.USER_NOT_FOUND)`보다 읽기 쉽고, catch할 때도 특정 예외만 잡을 수 있음. 상세 근거는 [008. 예외 처리 전략](./008-exception-strategy.md) 참고.
 
 ---
 
@@ -186,6 +225,7 @@ public class UserService {
 > `GlobalExceptionHandler` 도 같은 시그니처라 예외 응답과 정상 응답의 구조가 동일합니다.
 
 ```java
+@Tag(name = "User", description = "사용자 API")
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
@@ -193,44 +233,64 @@ public class UserController {
 
     private final UserService userService;
 
-    // 단건 조회 (200)
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserResponse>> get(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(userService.getUser(id)));
+    // 생성 (201)
+    @Operation(summary = "회원가입")
+    @PostMapping("/signup")
+    public ResponseEntity<ApiResponse<UserInfo>> signup(@Valid @RequestBody SignupRequest request) {
+        SignupCommand command = new SignupCommand(
+                request.email(), request.password(),
+                request.name(), request.phone(), request.role());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created(userService.signup(command)));
     }
 
-    // 생성 (201)
-    @PostMapping
-    public ResponseEntity<ApiResponse<UserResponse>> create(
-            @RequestBody @Valid UserCreateRequest req) {
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.created(userService.create(req)));
+    // 단건 조회 (200)
+    @Operation(summary = "마이페이지 조회")
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserInfo>> getMyInfo(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(ApiResponse.success(userService.getUserById(principal.getId())));
+    }
+
+    // 수정 (200)
+    @Operation(summary = "내 정보 수정")
+    @PutMapping("/me")
+    public ResponseEntity<ApiResponse<UserInfo>> updateMyInfo(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody UserUpdateRequest request) {
+        UpdateUserCommand command = new UpdateUserCommand(
+                request.name(), request.phone(), request.isPublic(), request.useAiDescription());
+        return ResponseEntity.ok(ApiResponse.success(userService.updateUser(principal.getId(), command)));
     }
 
     // 데이터 없는 성공 (200)
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
-        userService.delete(id);
+    @Operation(summary = "회원 탈퇴")
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> deleteMyAccount(@AuthenticationPrincipal UserPrincipal principal) {
+        userService.deleteUser(principal.getId());
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
-    // 페이지네이션
+    // 페이지네이션 (관리자)
+    @Operation(summary = "사용자 목록 검색 (관리자)")
+    @PreAuthorize("hasAnyRole('MANAGER', 'MASTER')")
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> list(Pageable pageable) {
-        return ResponseEntity.ok(
-                ApiResponse.success(PageResponse.from(userService.list(pageable)))
-        );
+    public ResponseEntity<ApiResponse<PageResponse<UserInfo>>> searchUsers(
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(userService.searchUsers(pageable)));
     }
 }
 ```
 
 **지키면 되는 것**
 
-- ⚠️ **엔티티를 그대로 반환하지 말 것.** 반드시 Response DTO 로 변환 (`UserResponse.from(user)` 같은 static factory 권장)
+- ⚠️ **엔티티를 그대로 반환하지 말 것.** 반드시 Response DTO 로 변환 (`UserInfo.from(user)` 같은 static factory 권장)
 - ⚠️ 정적 팩토리는 목적에 맞게: `ApiResponse.success(data)` / `ApiResponse.ok()` / `ApiResponse.created(data)`
 - ⚠️ 생성(POST) 응답은 `ResponseEntity.status(HttpStatus.CREATED).body(...)` 로 HTTP 201 명시
 - ⚠️ 페이지는 항상 `PageResponse.from(page)` 로 변환 (Spring `Page` 직노출 금지)
+- ⚠️ Swagger 어노테이션: 컨트롤러에 `@Tag`, 메서드에 `@Operation(summary = "...")` 필수
+- ⚠️ 인증 필요한 API는 `@AuthenticationPrincipal UserPrincipal principal` 로 사용자 정보 주입
+- ⚠️ 권한 제한은 `@PreAuthorize("hasRole('MASTER')")` 또는 `hasAnyRole(...)` 사용
+- ⚠️ Controller에서 Request DTO → Command 변환 후 Service 호출 (Service는 presentation DTO를 모름)
 
 ### 성공 응답 예시
 
@@ -240,7 +300,7 @@ public class UserController {
   "status": 200,
   "errorCode": null,
   "message": "OK",
-  "data": { "userId": 1, "username": "alice" }
+  "data": { "userId": 1, "email": "user@example.com", "name": "alice" }
 }
 ```
 
@@ -294,11 +354,14 @@ public class UserController {
 
 - [ ] 엔티티가 `BaseEntity` 를 상속했는가
 - [ ] 연관관계는 Long/UUID FK 만 사용했는가 (`@ManyToOne {다른도메인엔티티}` 금지)
-- [ ] `{Domain}ErrorCode` enum 과 `{Domain}Exception` 클래스를 작성했는가
-- [ ] 서비스에서 예외를 throw 할 때 `BaseException` 계열만 사용하는가
-- [ ] 컨트롤러는 `ApiResponse` 로 감싸서 반환하는가
+- [ ] `{Domain}ErrorCode` enum을 작성했는가
+- [ ] ErrorCode 하나당 개별 예외 클래스를 작성했는가 (예: `UserNotFoundException`)
+- [ ] 서비스에서 `.orElseThrow(XxxException::new)` 패턴으로 던지는가
+- [ ] 컨트롤러는 `ResponseEntity<ApiResponse<T>>` 로 반환하는가
+- [ ] Swagger 어노테이션(`@Tag`, `@Operation`)을 달았는가
 - [ ] 엔티티를 컨트롤러까지 올리지 않고 Response DTO 로 변환했는가
 - [ ] 페이지 조회는 `PageResponse.from(page)` 로 변환했는가
+- [ ] Controller에서 Request → Command 변환 후 Service에 전달하는가
 
 ---
 
@@ -307,3 +370,4 @@ public class UserController {
 - [004. 아키텍처 가이드](./004-architecture.md)
 - [005. JPA 가이드](./005-jpa-guidelines.md)
 - [006. 팀 협업 컨벤션](./006-conventions.md)
+- [008. 예외 처리 전략](./008-exception-strategy.md)
