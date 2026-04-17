@@ -180,7 +180,10 @@ public class UserService {
 
 ## 5. 컨트롤러 응답 작성
 
-모든 컨트롤러 메서드는 `ApiResponse<T>` 로 감싸서 반환.
+모든 컨트롤러 메서드는 **`ResponseEntity<ApiResponse<T>>`** 로 반환합니다.
+
+> HTTP 상태 코드와 `ApiResponse.status` 를 일치시키기 위해 `ResponseEntity` 로 감싸는 게 팀 컨벤션.
+> `GlobalExceptionHandler` 도 같은 시그니처라 예외 응답과 정상 응답의 구조가 동일합니다.
 
 ```java
 @RestController
@@ -190,38 +193,44 @@ public class UserController {
 
     private final UserService userService;
 
-    // 단건 조회
+    // 단건 조회 (200)
     @GetMapping("/{id}")
-    public ApiResponse<UserResponse> get(@PathVariable Long id) {
-        return ApiResponse.success(userService.getUser(id));
+    public ResponseEntity<ApiResponse<UserResponse>> get(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(userService.getUser(id)));
     }
 
     // 생성 (201)
     @PostMapping
-    public ApiResponse<UserResponse> create(@RequestBody @Valid UserCreateRequest req) {
-        return ApiResponse.created(userService.create(req));
+    public ResponseEntity<ApiResponse<UserResponse>> create(
+            @RequestBody @Valid UserCreateRequest req) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.created(userService.create(req)));
     }
 
-    // 데이터 없는 성공 응답
+    // 데이터 없는 성공 (200)
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         userService.delete(id);
-        return ApiResponse.ok();
+        return ResponseEntity.ok(ApiResponse.ok());
     }
 
     // 페이지네이션
     @GetMapping
-    public ApiResponse<PageResponse<UserResponse>> list(Pageable pageable) {
-        return ApiResponse.success(PageResponse.from(userService.list(pageable)));
+    public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> list(Pageable pageable) {
+        return ResponseEntity.ok(
+                ApiResponse.success(PageResponse.from(userService.list(pageable)))
+        );
     }
 }
 ```
 
 **지키면 되는 것**
 
-- ⚠️ **엔티티를 그대로 반환하지 말 것.** 반드시 Response DTO로 변환 (`UserResponse.from(user)` 같은 static factory 권장)
-- ⚠️ 성공 응답은 `success(data)` / `ok()` / `created(data)` 중 선택
-- ⚠️ 페이지는 항상 `PageResponse.from(page)` 로 변환 후 반환 (Spring `Page` 직노출 금지)
+- ⚠️ **엔티티를 그대로 반환하지 말 것.** 반드시 Response DTO 로 변환 (`UserResponse.from(user)` 같은 static factory 권장)
+- ⚠️ 정적 팩토리는 목적에 맞게: `ApiResponse.success(data)` / `ApiResponse.ok()` / `ApiResponse.created(data)`
+- ⚠️ 생성(POST) 응답은 `ResponseEntity.status(HttpStatus.CREATED).body(...)` 로 HTTP 201 명시
+- ⚠️ 페이지는 항상 `PageResponse.from(page)` 로 변환 (Spring `Page` 직노출 금지)
 
 ### 성공 응답 예시
 
