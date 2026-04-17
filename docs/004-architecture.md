@@ -34,7 +34,7 @@
 
 ---
 
-## 팀원 학습 가이드
+## 가이드
 
 ### 학습 순서
 
@@ -90,7 +90,8 @@
 | 만들 것 | 위치 | 예시 |
 |---------|------|------|
 | REST API 메서드 | `{도메인}/presentation/` | `UserController` |
-| Request/Response DTO | `{도메인}/presentation/dto/` | `UserCreateRequest` |
+| Request DTO (웹 검증용) | `{도메인}/presentation/dto/` | `SignupRequest` |
+| Command/Response DTO (서비스용) | `{도메인}/application/dto/` | `SignupCommand`, `UserInfo` |
 | 평소 쓰던 `@Service` | `{도메인}/application/` | `UserService` |
 | `@Entity` | `{도메인}/domain/entity/` | `User.java` |
 | `JpaRepository` 인터페이스 | `{도메인}/domain/repository/` | `UserRepository` |
@@ -148,9 +149,10 @@ public class StoreService {
 
 #### Q3. DTO는 어디에 두지?
 
-- **Request/Response DTO**: `{도메인}/presentation/dto/`
-  - 컨트롤러가 받고 응답하는 객체
-- 엔티티는 **절대 컨트롤러까지 올라오면 안 됨**. 응답 DTO로 변환해서 반환.
+- **Request DTO** (웹 검증용): `{도메인}/presentation/dto/` — 컨트롤러가 받는 객체
+- **Command/Response DTO** (서비스용): `{도메인}/application/dto/` — 서비스가 주고받는 객체
+- Controller에서 Request → Command 변환 후 Service에 전달 (Service는 presentation DTO를 모름)
+- 엔티티는 **절대 컨트롤러까지 올라오면 안 됨**. Response DTO로 변환해서 반환.
 
 #### Q4. 예외는 어디에?
 

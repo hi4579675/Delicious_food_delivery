@@ -33,19 +33,19 @@
 
 **도메인별 추가 확인 사항** (섹션 2-1, 2-2, 2-3 매핑):
 
-| 담당 도메인 | 엔티티 연관관계 | 특이사항 |
-|------------|----------------|---------|
-| user | User는 다른 엔티티에서 Long(user_id)로만 참조됨 | User 엔티티 자체는 독립. 다른 도메인이 `@ManyToOne User` 쓰지 못하게 차단 |
+| 담당 도메인 | FK 저장 방식 | 특이사항 |
+|------------|-------------|---------|
+| user | User는 다른 엔티티에서 `Long(userId)`로만 참조됨 | User 엔티티 자체는 독립. `@ManyToOne User` 금지 |
 | auth | 엔티티 관계 거의 없음 (JWT/로그인 위주) | TokenPair 등 VO만 존재. 영속성 X |
-| address | Address → User (`@ManyToOne`) | user_id로 저장. User 엔티티 직접 참조 금지 |
-| region | Region → ParentRegion (자기참조) | 자식 컬렉션(`children`) 열지 않음. 쿼리로 조회 |
-| store_category | StoreCategory → ParentCategory (자기참조) | region과 동일 패턴 |
-| store | Store → Region, StoreCategory (`@ManyToOne`) | `reviews`, `products` 컬렉션 열지 않음 |
-| product | Product → Store (`@ManyToOne`) | `orderItems` 컬렉션 열지 않음 |
-| order | Order → Store (`@ManyToOne`), Order ↔ OrderItem (Aggregate) | **예외적으로 `Order.items` 컬렉션 허용** (Aggregate 내부) |
-| payment | Payment → Order (`@ManyToOne`) | Order가 `payments` 컬렉션 갖지 않음 |
-| review | Review → Order, Store (`@ManyToOne`) | Store가 `reviews` 컬렉션 갖지 않음 |
-| ai | LlmCall → Llm, Product (`@ManyToOne`) | 별도 Aggregate 없음 |
+| address | `userId (Long)` FK 필드 | User 엔티티 직접 참조 금지 |
+| region | `parentId (UUID)` FK 필드 (자기참조) | 자식 컬렉션(`children`) 열지 않음. 쿼리로 조회 |
+| store_category | `parentId (UUID)` FK 필드 (자기참조) | region과 동일 패턴 |
+| store | `regionId (UUID)`, `categoryId (UUID)` FK 필드 | `reviews`, `products` 컬렉션 열지 않음 |
+| product | `storeId (UUID)` FK 필드 | `orderItems` 컬렉션 열지 않음 |
+| order | `storeId (UUID)` FK + OrderItem은 `@ManyToOne` (Aggregate) | **예외적으로 `Order.items` 컬렉션 허용** (Aggregate 내부) |
+| payment | `orderId (UUID)` FK 필드 | Order가 `payments` 컬렉션 갖지 않음 |
+| review | `orderId (UUID)`, `storeId (UUID)` FK 필드 | Store가 `reviews` 컬렉션 갖지 않음 |
+| ai | `llmId (UUID)`, `productId (UUID)` FK 필드 | 별도 Aggregate 없음 |
 
 ---
 
@@ -62,37 +62,34 @@
 
 ## 2. 연관관계 매핑
 
-### 2-1. 엔티티로 매핑할 관계 (ManyToOne 단방향)
+### 2-1. `@ManyToOne` 매핑 대상: Aggregate 내부만
+
+Aggregate 내부처럼 **함께 생성/삭제되는 관계**만 JPA 연관관계로 매핑합니다. 그 외 모든 관계는 **Long/UUID FK 필드**로만 참조합니다.
 
 | From → To | 이유 |
 |-----------|------|
-| OrderItem → Order, Product | 항목은 주문/상품 없이 존재 불가 |
-| Payment → Order | 결제는 주문 종속 |
-| Review → Order, Store | 리뷰 작성 가능 여부 확인 |
-| Address → User | 주소는 유저 소유 |
-| Store → Region, StoreCategory | 가게 지역/카테고리 |
-| Product → Store | 상품은 가게 소유 |
-| Region → ParentRegion (자기참조) | 트리 구조, 부모만 |
-| StoreCategory → ParentCategory (자기참조) | 트리 구조, 부모만 |
-| LlmCall → Llm, Product | AI 호출 이력 |
+| OrderItem → Order | 주문 항목은 주문 없이 존재 불가 (같은 Aggregate) |
 
-### 2-2. 열지 않을 컬렉션 (Repository 쿼리로 조회)
+**나머지는 전부 Long/UUID FK로만 저장:**
 
-| 엔티티 | 안 여는 필드 | 대신 쓸 메서드 |
-|--------|-------------|---------------|
-| Order | items | `OrderItemRepository.findByOrderId()` |
-| Store | reviews | `ReviewRepository.findByStoreId()` |
-| Store | products | `ProductRepository.findByStoreId()` |
-| User | addresses | `AddressRepository.findByUserId()` |
-| User | orders | `OrderRepository.findByUserId()` |
-| Region | children | `RegionRepository.findByParentId()` |
-| StoreCategory | children | `StoreCategoryRepository.findByParentId()` |
+| From | FK 필드 | 대상 |
+|------|---------|------|
+| OrderItem | `productId (UUID)` | Product |
+| Payment | `orderId (UUID)` | Order |
+| Review | `orderId (UUID)`, `storeId (UUID)` | Order, Store |
+| Address | `userId (Long)` | User |
+| Store | `regionId (UUID)`, `categoryId (UUID)` | Region, StoreCategory |
+| Product | `storeId (UUID)` | Store |
+| Region | `parentId (UUID)` | Region (자기참조) |
+| StoreCategory | `parentId (UUID)` | StoreCategory (자기참조) |
+| LlmCall | `llmId (UUID)`, `productId (UUID)` | Llm, Product |
 
-### 2-3. 예외: Aggregate 내부는 컬렉션 허용
+### 2-2. 컬렉션은 Aggregate 내부만 허용
 
-`Order`와 `OrderItem`은 같은 Aggregate로, 함께 생성/삭제되므로 컬렉션을 예외적으로 허용합니다.
+`Order`와 `OrderItem`은 같은 Aggregate로, 함께 생성/삭제되므로 컬렉션을 예외적으로 허용합니다. **그 외 모든 1:N 관계는 Repository 쿼리로 조회합니다.**
 
 ```java
+// 허용: Aggregate 내부
 @Entity
 public class Order extends BaseEntity {
 
@@ -105,6 +102,13 @@ public class Order extends BaseEntity {
     }
 }
 ```
+
+| 엔티티 | 컬렉션 열지 않음 | 대신 쓸 메서드 |
+|--------|-----------------|---------------|
+| Store | reviews, products | `ReviewRepository.findByStoreId()`, `ProductRepository.findByStoreId()` |
+| User | addresses, orders | `AddressRepository.findByUserId()`, `OrderRepository.findByUserId()` |
+| Region | children | `RegionRepository.findByParentId()` |
+| StoreCategory | children | `StoreCategoryRepository.findByParentId()` |
 
 ---
 
@@ -129,9 +133,10 @@ public class Order extends BaseEntity {
 
 **규칙**
 
-- 모든 도메인 엔티티는 `common/model/BaseEntity`를 상속한다
+- 수정/삭제가 필요한 도메인 엔티티는 `common/model/BaseEntity`를 상속한다
 - `BaseEntity`는 `createdAt`, `updatedAt`, `deletedAt` 및 `createdBy`, `updatedBy`, `deletedBy`를 **직접 필드로 보유**한다
 - `@Embeddable` VO 분리는 하지 않는다
+- **예외**: 수정/삭제가 필요 없는 로그성 테이블(`p_order_items`, `p_llm_calls` 등)은 BaseEntity를 상속하지 않고 `created_at`, `created_by`만 별도 필드로 추가한다
 
 **대안 비교**
 
@@ -307,11 +312,11 @@ Lombok의 무한 재귀를 방지합니다.
 
 새 엔티티를 만들 때 아래 항목을 모두 확인합니다.
 
-- [ ] `BaseEntity`를 상속했는가
-- [ ] 모든 연관관계가 `LAZY`인가
-- [ ] 양방향 대신 단방향 `@ManyToOne`으로 설계했는가
+- [ ] `BaseEntity`를 상속했는가 (로그성 테이블은 예외 — `created_at`, `created_by`만 별도 추가)
+- [ ] Aggregate 내부가 아닌 관계는 **Long/UUID FK 필드**로만 참조했는가 (`@ManyToOne` 금지)
+- [ ] Aggregate 내부 관계만 `@ManyToOne` + LAZY로 설계했는가
 - [ ] 컬렉션은 Aggregate 내부만 사용했는가 (Order.items 외 금지)
-- [ ] 다른 도메인의 엔티티를 import하지 않았는가 (감사 필드는 Long)
+- [ ] 다른 도메인의 엔티티를 import하지 않았는가
 - [ ] `@ToString`에 연관 엔티티를 exclude했는가
 - [ ] Soft Delete를 적용했는가
 - [ ] API 응답은 DTO로 변환했는가
@@ -320,5 +325,5 @@ Lombok의 무한 재귀를 방지합니다.
 
 ## 관련 문서
 
-- [아키텍처 가이드](./architecture.md)
-- [팀 협업 컨벤션](./conventions.md)
+- [004. 아키텍처 가이드](./004-architecture.md)
+- [006. 팀 협업 컨벤션](./006-conventions.md)
