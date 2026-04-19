@@ -1,6 +1,7 @@
 package com.sparta.delivery.product.domain.entity;
 
 import com.sparta.delivery.common.model.BaseEntity;
+import com.sparta.delivery.product.domain.exception.*;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -99,21 +100,17 @@ public class Product extends BaseEntity {
         this.isSoldOut = soldOut;
     }
 
-    /*
-    TODO: 모든 IllegalArgumentException은 상품 도메인 Exception으로 대체할 예정입니다.
-     */
-
     // not null
     private static void validateStoreId(UUID storeId) {
         if (storeId == null) {
-            throw new IllegalArgumentException("StoreId must not be null");
+            throw new InvalidStoreIdException();
         }
     }
 
     // not null, non-blank and no whitespaces-only
     private static void validateProductName(String productName) {
         if (productName == null || productName.isBlank()) {
-            throw new IllegalArgumentException("ProductName must not be blank");
+            throw new InvalidProductNameException();
         }
 
     }
@@ -121,11 +118,11 @@ public class Product extends BaseEntity {
     // relations between description and description source
     private static void validateDescription(String description, DescriptionSource descriptionSource) {
         if (description == null && descriptionSource != null) {
-            throw new IllegalArgumentException("Description and DescriptionSource must match");
+            throw new InvalidProductDescriptionException();
         }
 
         if (description != null && descriptionSource == null) {
-            throw new IllegalArgumentException("Description and DescriptionSource must match");
+            throw new InvalidProductDescriptionException();
         }
     }
 
@@ -133,14 +130,14 @@ public class Product extends BaseEntity {
     // not null and greater than 0
     private static void validatePrice(Integer price) {
         if (price == null || price <= 0) {
-            throw new IllegalArgumentException("Price must be greater than 0");
+            throw new InvalidProductPriceException();
         }
     }
 
     // greater than or equal to 0
     private static void validateDisplayOrder(Integer displayOrder) {
         if (displayOrder != null && displayOrder < 0) {
-            throw new IllegalArgumentException("DisplayOrder must be greater than or equal to 0");
+            throw new InvalidDisplayOrderException();
         }
     }
 }
