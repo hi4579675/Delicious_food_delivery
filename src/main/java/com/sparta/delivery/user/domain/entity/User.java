@@ -27,19 +27,20 @@ public class User extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userId;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String password;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, length = 20)
     private String name;
 
 
     @Column(length = 20)
     private String phone;
 
+    @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
