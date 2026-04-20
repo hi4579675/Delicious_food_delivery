@@ -59,3 +59,7 @@
 - 모든 설계 변경은 **이 문서에도 반영**되어야 합니다.
 - 문서 변경은 PR 설명에 링크 포함 (`docs/001-domain-spec.md#3-권한별-접근-범위`).
 - 새 문서 추가 시 이 README에 한 줄 요약 추가.
+
+### 누적 기록 (Why / What happened)
+- `adr/` — 의사결정 기록
+- `troubleshooting/` — 이슈 해결 기록
