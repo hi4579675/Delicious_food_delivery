@@ -6,6 +6,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "p_user")
+@SQLRestriction("deleted_at IS NULL") // 모든 쿼리에 deleted_at IS NULL 자동 추가 (soft delete)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
@@ -56,8 +58,8 @@ public class User extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String useAiDescription;
 
-    @Builder
-    public User(String email, String password, String name, String phone, UserRole role) {
+    @Builder(access = AccessLevel.PRIVATE)
+    private User(String email, String password, String name, String phone, UserRole role) {
         this.email = email;
         this.password = password;
         this.name = name;
@@ -65,6 +67,16 @@ public class User extends BaseEntity {
         this.role = role;
     }
 
+    public static User create(String email, String encodedPassword,
+                              String name, String phone, UserRole role) {
+        return User.builder()
+                .email(email)
+                .password(encodedPassword)
+                .name(name)
+                .phone(phone)
+                .role(role)
+                .build();
+    }
     public void updateInfo(String name, String phone, boolean isPublic, String useAiDescription) {
         this.name = name;
         this.phone = phone;
@@ -74,6 +86,7 @@ public class User extends BaseEntity {
 
     public void changeRole(UserRole role) {
         this.role = role;
+        incrementTokenVersion();
     }
 
     public void updateLastLoginAt() {
@@ -88,4 +101,13 @@ public class User extends BaseEntity {
         this.tokenVersion++;
     }
 
+    /**
+     * 탈퇴 처리. soft delete + 이메일 무효화로 동일 이메일 재가입 허용.
+     * BaseEntity.softDelete() 를 호출해 deletedAt/deletedBy 기록.
+     */
+    public void withdraw() {
+        this.email = "withdrawn_" + this.userId + "@deleted";
+        super.softDelete(this.userId);   // 본인이 탈퇴하니 deletedBy = 본인
+        incrementTokenVersion();         // 기존 토큰 무효화
+    }
 }
