@@ -48,7 +48,7 @@ public class Order extends BaseEntity {
     @Column(nullable = false, length = 20)
     private OrderStatus status;
 
-    @Column(length = 500)
+    @Column(nullable = false, updatable = false, length = 500)
     private String deliveryAddressSnapshot;
 
     private LocalDateTime rejectedAt;
