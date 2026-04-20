@@ -1,13 +1,11 @@
 package com.sparta.delivery.ai.domain.repository;
 
 import com.sparta.delivery.ai.domain.entity.LlmCall;
-
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface LlmCallRepository {
+public interface LlmCallRepository extends JpaRepository<LlmCall, UUID> {
 
-    LlmCall save(LlmCall llmCall);
-
-    Optional<LlmCall> findById(UUID callId);
+    Optional<LlmCall> findByCallId(UUID callId);
 }
