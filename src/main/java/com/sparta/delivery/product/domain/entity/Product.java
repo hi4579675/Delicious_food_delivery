@@ -55,7 +55,7 @@ public class Product extends BaseEntity {
     ) {
         validateStoreId(storeId);
         validateProductName(productName);
-        validateDescription(description, descriptionSource);
+        validateDescriptionForCreate(description, descriptionSource);
         validatePrice(price);
         validateDisplayOrder(displayOrder);
 
@@ -76,18 +76,17 @@ public class Product extends BaseEntity {
     public void updateInfo(
             String productName,
             String description,
-            DescriptionSource descriptionSource,
             Integer price,
             Integer displayOrder
     ) {
         validateProductName(productName);
-        validateDescription(description, descriptionSource);
+        validateDescriptionForUpdate(description);
         validatePrice(price);
         validateDisplayOrder(displayOrder);
 
         this.productName = productName;
         this.description = description;
-        this.descriptionSource = descriptionSource;
+        this.descriptionSource = (description == null) ? null : DescriptionSource.MANUAL;
         this.price = price;
         this.displayOrder = displayOrder;
     }
@@ -107,16 +106,16 @@ public class Product extends BaseEntity {
         }
     }
 
-    // not null, non-blank and no whitespaces-only
+    // not null, non-blank, and max length 100
     private static void validateProductName(String productName) {
-        if (productName == null || productName.isBlank()) {
+        if (productName == null || productName.isBlank() || productName.length() > 100) {
             throw new InvalidProductNameException();
         }
 
     }
 
     // relations between description and description source
-    private static void validateDescription(String description, DescriptionSource descriptionSource) {
+    private static void validateDescriptionForCreate(String description, DescriptionSource descriptionSource) {
         if (description == null && descriptionSource != null) {
             throw new InvalidProductDescriptionException();
         }
@@ -126,6 +125,12 @@ public class Product extends BaseEntity {
         }
     }
 
+    // nullable, but blank-only description is not allowed
+    private static void validateDescriptionForUpdate(String description) {
+        if (description != null && description.isBlank()) {
+            throw new InvalidProductDescriptionException();
+        }
+    }
 
     // not null and greater than 0
     private static void validatePrice(Integer price) {
