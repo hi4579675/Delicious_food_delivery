@@ -52,6 +52,7 @@ public class Llm extends BaseEntity {
         this.isActive = false;
     }
 
+    // not null, non-blank and max length 100
     private static void validateLlmName(String llmName) {
         if (llmName == null || llmName.isBlank() || llmName.length() > 100) {
             throw new IllegalArgumentException("Invalid model name.");
