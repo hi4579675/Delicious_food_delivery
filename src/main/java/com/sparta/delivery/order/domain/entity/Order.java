@@ -1,6 +1,7 @@
 package com.sparta.delivery.order.domain.entity;
 
 import com.sparta.delivery.common.model.BaseEntity;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -8,8 +9,11 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -51,6 +55,9 @@ public class Order extends BaseEntity {
     private LocalDateTime cancelDeadlineAt;
     private LocalDateTime completedAt;
     private LocalDateTime canceledAt;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final List<OrderItem> items = new ArrayList<>();
 
     @Builder
     private Order(
@@ -94,5 +101,10 @@ public class Order extends BaseEntity {
                 .deliveryAddressSnapshot(deliveryAddressSnapshot)
                 .cancelDeadlineAt(cancelDeadlineAt)
                 .build();
+    }
+
+    public void addOrderItem(OrderItem item) {
+        this.items.add(item);
+        item.setOrder(this);
     }
 }
