@@ -1,5 +1,7 @@
 package com.sparta.delivery.ai.domain.entity;
 
+import com.sparta.delivery.ai.domain.exception.InvalidCreatedByException;
+import com.sparta.delivery.ai.domain.exception.InvalidInputSnapshotException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -74,14 +76,14 @@ public class LlmCall {
     // not null and non-blank
     private static void validateInputSnapshot(String inputSnapshot) {
         if (inputSnapshot == null || inputSnapshot.isBlank()) {
-            throw new IllegalArgumentException("Invalid input snapshot");
+            throw new InvalidInputSnapshotException();
         }
     }
 
     // not null
     private static void validateCreatedBy(Long createdBy) {
         if (createdBy == null) {
-            throw new IllegalArgumentException("Invalid creator id");
+            throw new InvalidCreatedByException();
         }
     }
 }

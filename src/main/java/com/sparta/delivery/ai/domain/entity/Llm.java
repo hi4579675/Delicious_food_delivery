@@ -1,6 +1,7 @@
 package com.sparta.delivery.ai.domain.entity;
 
 
+import com.sparta.delivery.ai.domain.exception.InvalidLlmNameException;
 import com.sparta.delivery.common.model.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -55,7 +56,7 @@ public class Llm extends BaseEntity {
     // not null, non-blank and max length 100
     private static void validateLlmName(String llmName) {
         if (llmName == null || llmName.isBlank() || llmName.length() > 100) {
-            throw new IllegalArgumentException("Invalid model name.");
+            throw new InvalidLlmNameException();
         }
     }
 }
