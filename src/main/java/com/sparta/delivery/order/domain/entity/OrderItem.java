@@ -64,14 +64,13 @@ public class OrderItem {
             UUID productId,
             Integer quantity,
             Integer unitPrice,
-            Integer lineTotalPrice,
             String productNameSnapshot
     ) {
         this.order = order;
         this.productId = productId;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
-        this.lineTotalPrice = lineTotalPrice;
+        this.lineTotalPrice = quantity * unitPrice;
         this.productNameSnapshot = productNameSnapshot;
     }
 
@@ -80,7 +79,6 @@ public class OrderItem {
             UUID productId,
             Integer quantity,
             Integer unitPrice,
-            Integer lineTotalPrice,
             String productNameSnapshot
     ) {
         return OrderItem.builder()
@@ -88,7 +86,6 @@ public class OrderItem {
                 .productId(productId)
                 .quantity(quantity)
                 .unitPrice(unitPrice)
-                .lineTotalPrice(lineTotalPrice)
                 .productNameSnapshot(productNameSnapshot)
                 .build();
     }
