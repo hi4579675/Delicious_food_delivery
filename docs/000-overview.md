@@ -60,7 +60,8 @@
 ### 데이터
 
 - 모든 테이블 `p_` 접두사, PK는 `UUID` (`p_user`만 예외 - `BIGINT`)
-- 모든 엔티티는 `BaseEntity` 상속 — `createdAt`, `updatedAt`, `deletedAt` + `_by` 필드
+- 대부분의 엔티티는 `BaseEntity` 상속 — `createdAt`, `updatedAt`, `deletedAt` + `_by` 필드
+  - 단 수정/삭제 없는 로그성 테이블은 예외
 - 감사 필드 `_by`는 Java `Long` (user_id 값만 저장)
 - **`@ManyToOne User` 금지** — 도메인 강결합 방지
 

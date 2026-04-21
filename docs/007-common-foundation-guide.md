@@ -8,7 +8,7 @@
 
 ## 한 줄 요약
 
-모든 엔티티는 `BaseEntity` 상속 / 모든 예외는 `BaseException` 상속 / 모든 컨트롤러 응답은 `ApiResponse` 포맷 / 페이지 응답은 `PageResponse.from(page)`.
+대부분의 엔티티는 `BaseEntity` 상속 (로그성 테이블은 예외 — [005](./005-jpa-guidelines.md) 참고) / 모든 예외는 `BaseException` 상속 / 모든 컨트롤러 응답은 `ApiResponse` 포맷 / 페이지 응답은 `PageResponse.from(page)`.
 
 ---
 
@@ -39,7 +39,7 @@
 |---|---|
 | REST API 메서드 | `{domain}/presentation/` |
 | Request DTO (웹 검증용) | `{domain}/presentation/dto/` |
-| Command/Response DTO (서비스용) | `{domain}/application/dto/` |
+| Response DTO (서비스 반환) | `{domain}/presentation/dto/` |
 | `@Service` | `{domain}/application/` |
 | `@Entity` | `{domain}/domain/entity/` |
 | Repository 인터페이스 | `{domain}/domain/repository/` |
@@ -53,13 +53,17 @@
 ## 2. 의존성 방향
 
 ```
-presentation → application → domain ← infrastructure
+presentation → application → domain
+                    ↓
+              infrastructure (필요 시)
 ```
 
-- 컨트롤러는 **서비스만** 호출
-- 서비스는 엔티티·Repository를 조합
-- Repository 구현체(infrastructure)는 `domain/repository/`의 인터페이스를 **구현**하고 엔티티를 반환 — **의존성 역전**
-- `domain`은 다른 계층을 **절대 모름**
+- 컨트롤러는 **서비스만** 호출 (얇게 유지)
+- 서비스는 자기 도메인의 Repository와 엔티티를 조합, 다른 도메인은 그쪽 **서비스**를 주입
+- `domain`은 웹(HTTP)이나 외부 API를 모름 — JPA 어노테이션까지는 허용
+- `infrastructure`는 **커스텀 쿼리(QueryDSL 등) / 외부 API 클라이언트 / JWT** 등이 필요할 때만 등장 (기본 CRUD는 `JpaRepository` 프록시가 자동 처리)
+
+> 자세한 가이드라인은 [`004. 아키텍처 가이드 #의존성 가이드라인`](./004-architecture.md#의존성-가이드라인) 참고.
 
 ---
 
@@ -70,7 +74,7 @@ presentation → application → domain ← infrastructure
 @Table(name = "p_store")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Store extends BaseEntity {   // 🔴 무조건 BaseEntity 상속
+public class Store extends BaseEntity {   // 🔴 일반 엔티티는 BaseEntity 상속 (로그성 테이블 예외)
 
     @Id @GeneratedValue
     private UUID storeId;
@@ -161,17 +165,17 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public UserInfo signup(SignupCommand command) {
-        if (userRepository.existsByEmail(command.email())) {
+    public UserInfo signup(SignupRequest request) {
+        if (userRepository.existsByEmail(request.email())) {
             throw new DuplicateEmailException();
         }
 
         User user = User.builder()
-                .email(command.email())
-                .password(passwordEncoder.encode(command.password()))
-                .name(command.name())
-                .phone(command.phone())
-                .role(parseRole(command.role()))
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .name(request.name())
+                .phone(request.phone())
+                .role(parseRole(request.role()))
                 .build();
 
         return UserInfo.from(userRepository.save(user));
@@ -184,8 +188,8 @@ public class UserService {
 
     private User getActiveUser(Long userId) {
         return userRepository.findById(userId)
-                .filter(u -> !u.isDeleted())
                 .orElseThrow(UserNotFoundException::new);
+        // @SQLRestriction이 deleted_at IS NULL 자동 적용 → 별도 isDeleted() 체크 불필요
     }
 }
 ```
@@ -237,11 +241,8 @@ public class UserController {
     @Operation(summary = "회원가입")
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<UserInfo>> signup(@Valid @RequestBody SignupRequest request) {
-        SignupCommand command = new SignupCommand(
-                request.email(), request.password(),
-                request.name(), request.phone(), request.role());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created(userService.signup(command)));
+                .body(ApiResponse.created(userService.signup(request)));
     }
 
     // 단건 조회 (200)
@@ -257,9 +258,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserInfo>> updateMyInfo(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody UserUpdateRequest request) {
-        UpdateUserCommand command = new UpdateUserCommand(
-                request.name(), request.phone(), request.isPublic(), request.useAiDescription());
-        return ResponseEntity.ok(ApiResponse.success(userService.updateUser(principal.getId(), command)));
+        return ResponseEntity.ok(ApiResponse.success(userService.updateUser(principal.getId(), request)));
     }
 
     // 데이터 없는 성공 (200)
@@ -290,7 +289,7 @@ public class UserController {
 - ⚠️ Swagger 어노테이션: 컨트롤러에 `@Tag`, 메서드에 `@Operation(summary = "...")` 필수
 - ⚠️ 인증 필요한 API는 `@AuthenticationPrincipal UserPrincipal principal` 로 사용자 정보 주입
 - ⚠️ 권한 제한은 `@PreAuthorize("hasRole('MASTER')")` 또는 `hasAnyRole(...)` 사용
-- ⚠️ Controller에서 Request DTO → Command 변환 후 Service 호출 (Service는 presentation DTO를 모름)
+- ⚠️ Request/Response DTO 모두 `{도메인}/presentation/dto/`에 둔다 (중간 Command DTO는 만들지 않음). Service는 Request DTO를 그대로 받아도 OK, 필드 적으면 primitive로 받아도 됨
 
 ### 성공 응답 예시
 
@@ -331,7 +330,7 @@ public class UserController {
 
 | 클래스 | 위치 | 용도 |
 |---|---|---|
-| `BaseEntity` | `common/model/` | 모든 엔티티가 상속 (감사 필드 + soft delete) |
+| `BaseEntity` | `common/model/` | 일반 엔티티가 상속 (감사 필드 + soft delete). 로그성 테이블은 예외 |
 | `ApiResponse` | `common/response/` | 모든 컨트롤러 응답 포맷 |
 | `PageResponse` | `common/response/` | 페이지네이션 응답 변환 |
 | `ErrorCode` | `common/exception/` | 도메인별 ErrorCode enum이 구현할 인터페이스 |
@@ -352,7 +351,7 @@ public class UserController {
 
 ## 체크리스트 (새 도메인 착수 시)
 
-- [ ] 엔티티가 `BaseEntity` 를 상속했는가
+- [ ] 엔티티가 `BaseEntity` 를 상속했는가 (로그성 테이블은 예외 — [005](./005-jpa-guidelines.md) 참고)
 - [ ] 연관관계는 Long/UUID FK 만 사용했는가 (`@ManyToOne {다른도메인엔티티}` 금지)
 - [ ] `{Domain}ErrorCode` enum을 작성했는가
 - [ ] ErrorCode 하나당 개별 예외 클래스를 작성했는가 (예: `UserNotFoundException`)
@@ -361,7 +360,7 @@ public class UserController {
 - [ ] Swagger 어노테이션(`@Tag`, `@Operation`)을 달았는가
 - [ ] 엔티티를 컨트롤러까지 올리지 않고 Response DTO 로 변환했는가
 - [ ] 페이지 조회는 `PageResponse.from(page)` 로 변환했는가
-- [ ] Controller에서 Request → Command 변환 후 Service에 전달하는가
+- [ ] Request/Response DTO 모두 `presentation/dto/`에 위치하는가 (중간 Command DTO 만들지 않음)
 
 ---
 

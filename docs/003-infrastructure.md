@@ -1,6 +1,6 @@
 # 003. 인프라 명세
 
-> **이 문서를 보면**: 어디에 어떻게 배포되는지, CI/CD는 어떻게 돌아가는지, 어떤 환경변수가 필요한지 파악 가능.
+> **이 문서를 보면**: 어디에 어떻게 배포되는지, 어떤 기술 스택/환경변수가 필요한지 파악 가능.
 >
 > **언제 다시 보나요**: 배포 시, 환경변수 추가할 때, 신규 인프라 요소 도입 시.
 
@@ -8,7 +8,7 @@
 
 ## 한 줄 요약
 
-**GitHub Actions**로 빌드하여 **AWS EC2** 위의 **Docker 컨테이너 3개** (Spring Boot / PostgreSQL / Redis)로 배포한다.
+**GitHub Actions**로 빌드하여 **AWS EC2** 위 **Docker**로 배포. EC2 안에 **Spring Boot / PostgreSQL / Redis** 세 컨테이너가 함께 올라간다.
 
 ---
 
@@ -40,9 +40,9 @@
 
 ### 구조 요약
 
-- 모든 런타임 서비스는 **Docker 컨테이너**로 실행
-- 단일 EC2 인스턴스에 **Spring Boot + PostgreSQL + Redis** 컨테이너가 함께 올라감
+- 운영 환경은 단일 EC2 인스턴스에 **Spring Boot + PostgreSQL + Redis** 컨테이너가 함께 올라감
 - **GitHub Actions**가 빌드 후 EC2로 배포
+- 로컬 개발은 PostgreSQL / Redis만 Docker로 기동, Spring Boot는 IntelliJ/`bootRun`으로 실행 (`spring-boot-docker-compose`가 `docker-compose.yml`을 자동 기동)
 
 ---
 
@@ -51,27 +51,34 @@
 | 구분 | 기술 | 비고 |
 |------|------|------|
 | Language | Java 17 | |
-| Framework | Spring Boot 3.x | |
-| Security | Spring Security + JWT (jjwt) | 매 요청 DB 권한 재검증 |
-| ORM | JPA / Hibernate | |
-| DB | PostgreSQL 15+ | Docker 컨테이너 |
-| Cache / Session | Redis 7+ | Docker 컨테이너 |
-| Build | Gradle 8.x | |
-| API 문서 | springdoc-openapi (Swagger) | |
-| AI | Google Gemini 1.5 Flash | REST 호출 |
-| 컨테이너 | Docker + docker-compose | |
-| CI/CD | GitHub Actions | |
-| 서버 | AWS EC2 (Ubuntu 22.04) | |
+| Framework | Spring Boot 3.5.13 | |
+| Security | Spring Security + JWT (`jjwt 0.11.5`) | HS256, 매 요청 DB 권한 재검증 |
+| ORM | JPA / Hibernate | `ddl-auto`: local=`create-drop`, prod=`validate` |
+| DB | PostgreSQL 16 (alpine) | Docker 컨테이너 |
+| Cache / Session | Redis 7 (alpine) | Docker 컨테이너 |
+| Build | Gradle 9.4.1 | |
+| API 문서 | `springdoc-openapi 2.8.15` (Swagger UI) | `/swagger-ui.html` |
+| AI | Google Gemini (WebClient / WebFlux) | REST 호출 |
+| Monitoring | Spring Boot Actuator | `health`, `info` (prod) |
+| AOP | Spring Boot Starter AOP | |
+| Test | JUnit 5, Spring Security Test, Testcontainers, H2 (runtime) | |
+| Local Dev | `spring-boot-docker-compose` | `bootRun` 시 `docker-compose.yml` 자동 기동 |
+| 컨테이너 | Docker / docker-compose | |
+| CI/CD | GitHub Actions | **미구현** — `.github/workflows/` 추가 예정 |
+| 서버 | AWS EC2 | |
 
 ---
 
 ## 3. 환경별 Profile
 
-| 환경 | Profile | DB | Redis | 실행 방식 |
-|------|---------|-----|-------|----------|
-| 로컬 개발 | `local` | PostgreSQL (Docker) | Redis (Docker) | `./gradlew bootRun` (spring-boot-docker-compose로 자동 기동) |
-| 테스트 | `test` | H2 In-Memory | (Mock 또는 없음) | JUnit 단위/통합 테스트 |
-| 운영 | `prod` | PostgreSQL (Docker) | Redis (Docker) | EC2에서 `docker compose up -d` |
+현재 `application.yml`에 정의된 프로필은 **`local`, `prod`** 두 가지.
+
+| 프로필 | DB | Redis | 실행 방식 |
+|--------|-----|-------|----------|
+| `local` (기본값) | PostgreSQL (Docker, localhost:5432) | Redis (Docker, localhost:6379) | `./gradlew bootRun` — `spring-boot-docker-compose`가 Postgres/Redis 컨테이너 자동 기동 |
+| `prod` | PostgreSQL (환경변수 주입) | Redis (환경변수 주입) | EC2에서 Docker로 실행, `SPRING_PROFILES_ACTIVE=prod` |
+
+> 테스트는 별도 프로필 없이 `runtimeOnly` H2 + Testcontainers 조합으로 수행.
 
 ### Profile 활성화
 
@@ -93,28 +100,37 @@ SPRING_PROFILES_ACTIVE=prod
 |--------|------|
 | `SPRING_PROFILES_ACTIVE` | 프로필 선택 (`prod`) |
 | `DB_HOST` | PostgreSQL 컨테이너 호스트명 |
-| `DB_PORT` | PostgreSQL 포트 |
+| `DB_PORT` | PostgreSQL 포트 (기본 5432) |
 | `DB_NAME` | DB 이름 |
 | `DB_USERNAME` | DB 사용자 |
 | `DB_PASSWORD` | DB 비밀번호 |
 | `REDIS_HOST` | Redis 컨테이너 호스트명 |
-| `REDIS_PORT` | Redis 포트 |
+| `REDIS_PORT` | Redis 포트 (기본 6379) |
 | `REDIS_PASSWORD` | Redis 비밀번호 |
-| `JWT_SECRET` | JWT 서명 키 (256bit 이상) |
+| `JWT_SECRET` | JWT 서명 키 (HS256, 256bit 이상) |
 | `GEMINI_API_KEY` | Google AI Studio 발급 API 키 |
 
-### 4-2. 로컬 개발 (.env)
+### 4-2. 로컬 개발 (`.env`)
 
-`.env` 파일로 Docker Compose 변수 관리.
+`.env` 파일로 Docker Compose + 애플리케이션 변수 관리. 실제 `.env.example`:
 
 ```env
+# DB
 POSTGRES_DB=delivery
 POSTGRES_USER=delivery
-POSTGRES_PASSWORD=1234
-REDIS_PASSWORD=1234
+POSTGRES_PASSWORD=changeme
+
+# Redis
+REDIS_PASSWORD=changeme
+
+# JWT
+JWT_SECRET=your-256-bit-secret-key-here
+
+# Gemini AI
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
-> `.env`는 **Git에 커밋 금지** (`.gitignore` 포함됨). 템플릿은 `.env.example` 참고.
+> `.env`는 **Git에 커밋 금지** (`.gitignore` 포함). 템플릿은 `.env.example` 참고.
 
 ---
 
@@ -123,29 +139,27 @@ REDIS_PASSWORD=1234
 ### 인증 / 인가
 
 - JWT Access Token 헤더: `Authorization: Bearer {token}`
-- 서명 알고리즘: HS256
-- 비밀번호 저장: BCrypt 해시
+- 서명 알고리즘: **HS256** (`jjwt 0.11.5`)
+- 토큰 만료: 1시간 (`jwt.expiration=3600000`ms)
+- 비밀번호 저장: **BCrypt** 해시
 - 매 요청 시 JWT payload의 `role`과 DB의 현재 `role` 비교
-- Redis 캐싱으로 권한 재검증 부하 완화 (선택)
+- Redis 캐싱으로 권한 재검증 부하 완화 (도입 여부 추후 결정)
 
 ### 민감 정보 관리
 
 - `GEMINI_API_KEY`, `DB_PASSWORD`, `JWT_SECRET`, `REDIS_PASSWORD`는 **환경 변수로만** 관리
 - 코드/Git에 하드코딩 금지
-- `.env.example`에는 변수명만 공개
-
-### 입력 검증
-
-- 모든 Request DTO에 Spring Validation 적용
-- 예: `@NotBlank`, `@Size(min=4, max=10)`, `@Pattern(regexp="...")`
+- `.env.example`에는 변수명과 더미 값만 공개
 
 ---
 
 ## 6. CI/CD 파이프라인
 
-GitHub Actions로 브랜치 푸시 시 빌드·배포가 이루어지도록 구성한다.
+GitHub Actions로 브랜치 푸시 시 빌드·배포가 이루어지도록 구성할 예정.
 
-> 세부 워크플로우 및 Secrets 구성은 실제 구현 시 확정.
+> **현재 상태**: `.github/workflows/` 디렉토리 **미구현**. 워크플로우 정의와 EC2 배포 스크립트, Docker 이미지 빌드 (Dockerfile) 모두 추후 작성.
+>
+> Backend Docker 이미지 빌드용 `Dockerfile` 및 운영 배포용 `docker-compose` 구성도 함께 추가 필요.
 
 ---
 
