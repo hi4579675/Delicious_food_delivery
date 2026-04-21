@@ -4,7 +4,6 @@ import com.sparta.delivery.product.domain.exception.InvalidDisplayOrderException
 import com.sparta.delivery.product.domain.exception.InvalidProductDescriptionException;
 import com.sparta.delivery.product.domain.exception.InvalidProductNameException;
 import com.sparta.delivery.product.domain.exception.InvalidProductPriceException;
-import com.sparta.delivery.product.domain.exception.InvalidStoreIdException;
 import com.sparta.delivery.product.domain.exception.ProductErrorCode;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -19,7 +18,6 @@ class ProductTest {
     @DisplayName("create should create product successfully with default states")
     void create_shouldCreateProductSuccessfully_withDefaultStates() {
         // given
-        UUID productId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         String productName = "Americano";
         String description = "극강의 산미, 에티오피아 싱글 아메리카노";
@@ -29,7 +27,6 @@ class ProductTest {
 
         // when
         Product product = Product.create(
-                productId,
                 storeId,
                 productName,
                 description,
@@ -39,7 +36,6 @@ class ProductTest {
         );
 
         // then
-        assertThat(product.getProductId()).isEqualTo(productId);
         assertThat(product.getStoreId()).isEqualTo(storeId);
         assertThat(product.getProductName()).isEqualTo(productName);
         assertThat(product.getDescription()).isEqualTo(description);
@@ -54,12 +50,10 @@ class ProductTest {
     @DisplayName("create should allow null description and null descriptionSource")
     void create_shouldAllowNullDescriptionAndNullDescriptionSource() {
         // given
-        UUID productId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
 
         // when
         Product product = Product.create(
-                productId,
                 storeId,
                 "Americano",
                 null,
@@ -74,87 +68,14 @@ class ProductTest {
     }
 
     @Test
-    @DisplayName("create should throw when storeId is null")
-    void create_shouldThrow_whenStoreIdIsNull() {
-        // given
-        UUID productId = UUID.randomUUID();
-
-        // when
-        Throwable thrown = catchThrowable(() -> Product.create(
-                productId,
-                null,
-                "Americano",
-                null,
-                null,
-                4500,
-                1
-        ));
-
-        // then
-        assertThat(thrown).isInstanceOf(InvalidStoreIdException.class);
-        InvalidStoreIdException exception = (InvalidStoreIdException) thrown;
-        assertThat(exception.getCode()).isEqualTo(ProductErrorCode.INVALID_STORE_ID.getCode());
-    }
-
-    @Test
-    @DisplayName("create should throw when productName is null")
-    void create_shouldThrow_whenProductNameIsNull() {
-        // given
-        UUID productId = UUID.randomUUID();
-        UUID storeId = UUID.randomUUID();
-
-        // when
-        Throwable thrown = catchThrowable(() -> Product.create(
-                productId,
-                storeId,
-                null,
-                null,
-                null,
-                4500,
-                1
-        ));
-
-        // then
-        assertThat(thrown).isInstanceOf(InvalidProductNameException.class);
-        InvalidProductNameException exception = (InvalidProductNameException) thrown;
-        assertThat(exception.getCode()).isEqualTo(ProductErrorCode.INVALID_PRODUCT_NAME.getCode());
-    }
-
-    @Test
-    @DisplayName("create should throw when productName is blank")
-    void create_shouldThrow_whenProductNameIsBlank() {
-        // given
-        UUID productId = UUID.randomUUID();
-        UUID storeId = UUID.randomUUID();
-
-        // when
-        Throwable thrown = catchThrowable(() -> Product.create(
-                productId,
-                storeId,
-                "   ",
-                null,
-                null,
-                4500,
-                1
-        ));
-
-        // then
-        assertThat(thrown).isInstanceOf(InvalidProductNameException.class);
-        InvalidProductNameException exception = (InvalidProductNameException) thrown;
-        assertThat(exception.getCode()).isEqualTo(ProductErrorCode.INVALID_PRODUCT_NAME.getCode());
-    }
-
-    @Test
     @DisplayName("create should throw when productName length exceeds 100")
     void create_shouldThrow_whenProductNameLengthExceeds100() {
         // given
-        UUID productId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
         String longName = "a".repeat(101);
 
         // when
         Throwable thrown = catchThrowable(() -> Product.create(
-                productId,
                 storeId,
                 longName,
                 null,
@@ -173,12 +94,10 @@ class ProductTest {
     @DisplayName("create should throw when description is null and descriptionSource exists")
     void create_shouldThrow_whenDescriptionIsNullAndDescriptionSourceExists() {
         // given
-        UUID productId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
 
         // when
         Throwable thrown = catchThrowable(() -> Product.create(
-                productId,
                 storeId,
                 "Americano",
                 null,
@@ -197,12 +116,10 @@ class ProductTest {
     @DisplayName("create should throw when description exists and descriptionSource is null")
     void create_shouldThrow_whenDescriptionExistsAndDescriptionSourceIsNull() {
         // given
-        UUID productId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
 
         // when
         Throwable thrown = catchThrowable(() -> Product.create(
-                productId,
                 storeId,
                 "Americano",
                 "깔끔한 아메리카노",
@@ -221,12 +138,10 @@ class ProductTest {
     @DisplayName("create should allow description and descriptionSource together")
     void create_shouldAllowDescriptionAndDescriptionSourceTogether() {
         // given
-        UUID productId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
 
         // when
         Product product = Product.create(
-                productId,
                 storeId,
                 "Americano",
                 "깔끔한 아메리카노",
@@ -241,39 +156,13 @@ class ProductTest {
     }
 
     @Test
-    @DisplayName("create should throw when price is null")
-    void create_shouldThrow_whenPriceIsNull() {
-        // given
-        UUID productId = UUID.randomUUID();
-        UUID storeId = UUID.randomUUID();
-
-        // when
-        Throwable thrown = catchThrowable(() -> Product.create(
-                productId,
-                storeId,
-                "Americano",
-                null,
-                null,
-                null,
-                1
-        ));
-
-        // then
-        assertThat(thrown).isInstanceOf(InvalidProductPriceException.class);
-        InvalidProductPriceException exception = (InvalidProductPriceException) thrown;
-        assertThat(exception.getCode()).isEqualTo(ProductErrorCode.INVALID_PRODUCT_PRICE.getCode());
-    }
-
-    @Test
     @DisplayName("create should throw when price is zero")
     void create_shouldThrow_whenPriceIsZero() {
         // given
-        UUID productId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
 
         // when
         Throwable thrown = catchThrowable(() -> Product.create(
-                productId,
                 storeId,
                 "Americano",
                 null,
@@ -292,12 +181,10 @@ class ProductTest {
     @DisplayName("create should throw when price is negative")
     void create_shouldThrow_whenPriceIsNegative() {
         // given
-        UUID productId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
 
         // when
         Throwable thrown = catchThrowable(() -> Product.create(
-                productId,
                 storeId,
                 "Americano",
                 null,
@@ -316,12 +203,10 @@ class ProductTest {
     @DisplayName("create should throw when displayOrder is negative")
     void create_shouldThrow_whenDisplayOrderIsNegative() {
         // given
-        UUID productId = UUID.randomUUID();
         UUID storeId = UUID.randomUUID();
 
         // when
         Throwable thrown = catchThrowable(() -> Product.create(
-                productId,
                 storeId,
                 "Americano",
                 null,
@@ -337,11 +222,30 @@ class ProductTest {
     }
 
     @Test
+    @DisplayName("create should allow null displayOrder")
+    void create_shouldAllowNullDisplayOrder() {
+        // given
+        UUID storeId = UUID.randomUUID();
+
+        // when
+        Product product = Product.create(
+                storeId,
+                "Americano",
+                null,
+                null,
+                4500,
+                null
+        );
+
+        // then
+        assertThat(product.getDisplayOrder()).isNull();
+    }
+
+    @Test
     @DisplayName("updateInfo should update fields and set descriptionSource to manual when description exists")
     void updateInfo_shouldUpdateFieldsAndSetDescriptionSourceToManual_whenDescriptionExists() {
         // given
         Product product = Product.create(
-                UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Americano",
                 "AI description",
@@ -372,7 +276,6 @@ class ProductTest {
         // given
         Product product = Product.create(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
                 "Americano",
                 "AI description",
                 DescriptionSource.AI_GENERATED,
@@ -394,39 +297,10 @@ class ProductTest {
     }
 
     @Test
-    @DisplayName("updateInfo should throw when description is blank")
-    void updateInfo_shouldThrow_whenDescriptionIsBlank() {
-        // given
-        Product product = Product.create(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "Americano",
-                null,
-                null,
-                4500,
-                1
-        );
-
-        // when
-        Throwable thrown = catchThrowable(() -> product.updateInfo(
-                "Cafe Latte",
-                "   ",
-                5500,
-                2
-        ));
-
-        // then
-        assertThat(thrown).isInstanceOf(InvalidProductDescriptionException.class);
-        InvalidProductDescriptionException exception = (InvalidProductDescriptionException) thrown;
-        assertThat(exception.getCode()).isEqualTo(ProductErrorCode.INVALID_PRODUCT_DESCRIPTION.getCode());
-    }
-
-    @Test
     @DisplayName("changeHidden should change hidden state")
     void changeHidden_shouldChangeHiddenState() {
         // given
         Product product = Product.create(
-                UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Americano",
                 null,
@@ -454,7 +328,6 @@ class ProductTest {
         // given
         Product product = Product.create(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
                 "Americano",
                 null,
                 null,
@@ -480,7 +353,6 @@ class ProductTest {
     void softDelete_shouldMarkProductAsDeleted() {
         // given
         Product product = Product.create(
-                UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Americano",
                 null,
@@ -508,7 +380,6 @@ class ProductTest {
     void softDelete_shouldKeepFirstDeletedState_whenCalledTwice() {
         // given
         Product product = Product.create(
-                UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Americano",
                 null,
