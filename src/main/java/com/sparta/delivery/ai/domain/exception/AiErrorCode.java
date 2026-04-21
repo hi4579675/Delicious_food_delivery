@@ -9,9 +9,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum AiErrorCode implements ErrorCode {
-    INVALID_LLM_NAME(HttpStatus.BAD_REQUEST, "AI-001", "모델 이름은 100자를 넘을 수 없습니다."),
-    INVALID_INPUT_SNAPSHOT(HttpStatus.BAD_REQUEST, "AI-002", "유효하지 않은 입력 스냅샷입니다."),
-    INVALID_CREATED_BY(HttpStatus.BAD_REQUEST, "AI-003", "유효하지 않은 생성자 정보입니다.");
+    INVALID_LLM_NAME(HttpStatus.BAD_REQUEST, "AI-001", "모델 이름은 100자를 넘을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;
