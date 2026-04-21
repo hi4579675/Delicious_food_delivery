@@ -13,7 +13,9 @@ public record UserResponse(
         UserRole role,
         boolean isPublic,
         String useAiDescription,
-        LocalDateTime createdAt
+        LocalDateTime lastLoginAt,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -24,7 +26,9 @@ public record UserResponse(
                 user.getRole(),
                 user.isPublic(),
                 user.getUseAiDescription(),
-                user.getCreatedAt()
+                user.getLastLoginAt(),
+                user.getCreatedAt(),
+                user.getUpdatedAt()
         );
     }
 }
