@@ -22,6 +22,10 @@ public record SignupRequest(
         @Pattern(regexp = "^[a-z0-9]+$", message = "이름은 알파벳 소문자와 숫자만 가능합니다.")
         String name,
 
+        @Pattern(
+                regexp = "^01\\d-?\\d{3,4}-?\\d{4}$",
+                message = "전화번호 형식이 올바르지 않습니다."
+        )
         String phone,
 
         @NotNull(message = "역할은 필수입니다.")

@@ -10,6 +10,7 @@ import com.sparta.delivery.user.domain.repository.UserRepository;
 import com.sparta.delivery.user.presentation.dto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +40,12 @@ public class UserService {
                 request.phone(),
                 request.role().toDomain()
         );
-        return userRepository.save(user).getUserId();
+        try {
+            return userRepository.save(user).getUserId();
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateEmailException();
+        }
+
     }
 
     /** 내 정보 조회 */
