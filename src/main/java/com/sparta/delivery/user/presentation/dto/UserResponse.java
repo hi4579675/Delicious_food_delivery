@@ -1,0 +1,30 @@
+package com.sparta.delivery.user.presentation.dto;
+
+import com.sparta.delivery.user.domain.entity.User;
+import com.sparta.delivery.user.domain.entity.UserRole;
+
+import java.time.LocalDateTime;
+
+public record UserResponse(
+        Long userId,
+        String email,
+        String name,
+        String phone,
+        UserRole role,
+        boolean isPublic,
+        String useAiDescription,
+        LocalDateTime createdAt
+) {
+    public static UserResponse from(User user) {
+        return new UserResponse(
+                user.getUserId(),
+                user.getEmail(),
+                user.getName(),
+                user.getPhone(),
+                user.getRole(),
+                user.isPublic(),
+                user.getUseAiDescription(),
+                user.getCreatedAt()
+        );
+    }
+}
