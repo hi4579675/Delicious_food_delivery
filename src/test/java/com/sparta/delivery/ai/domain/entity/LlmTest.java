@@ -2,12 +2,13 @@ package com.sparta.delivery.ai.domain.entity;
 
 import com.sparta.delivery.ai.domain.exception.AiErrorCode;
 import com.sparta.delivery.ai.domain.exception.InvalidLlmNameException;
-import java.time.LocalDateTime;
-import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import java.time.LocalDateTime;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 class LlmTest {
 
@@ -15,58 +16,25 @@ class LlmTest {
     @DisplayName("create should create llm successfully")
     void create_shouldCreateLlmSuccessfully() {
         // given
-        UUID llmId = UUID.randomUUID();
         String llmName = "gemini-1.5-flash";
         boolean isActive = true;
 
         // when
-        Llm llm = Llm.create(llmId, llmName, isActive);
+        Llm llm = Llm.create(llmName, isActive);
 
         // then
-        assertThat(llm.getLlmId()).isEqualTo(llmId);
         assertThat(llm.getLlmName()).isEqualTo(llmName);
         assertThat(llm.isActive()).isTrue();
-    }
-
-    @Test
-    @DisplayName("create should throw when llmName is null")
-    void create_shouldThrow_whenLlmNameIsNull() {
-        // given
-        UUID llmId = UUID.randomUUID();
-
-        // when
-        Throwable thrown = catchThrowable(() -> Llm.create(llmId, null, false));
-
-        // then
-        assertThat(thrown).isInstanceOf(InvalidLlmNameException.class);
-        InvalidLlmNameException exception = (InvalidLlmNameException) thrown;
-        assertThat(exception.getCode()).isEqualTo(AiErrorCode.INVALID_LLM_NAME.getCode());
-    }
-
-    @Test
-    @DisplayName("create should throw when llmName is blank")
-    void create_shouldThrow_whenLlmNameIsBlank() {
-        // given
-        UUID llmId = UUID.randomUUID();
-
-        // when
-        Throwable thrown = catchThrowable(() -> Llm.create(llmId, "   ", false));
-
-        // then
-        assertThat(thrown).isInstanceOf(InvalidLlmNameException.class);
-        InvalidLlmNameException exception = (InvalidLlmNameException) thrown;
-        assertThat(exception.getCode()).isEqualTo(AiErrorCode.INVALID_LLM_NAME.getCode());
     }
 
     @Test
     @DisplayName("create should throw when llmName length exceeds 100")
     void create_shouldThrow_whenLlmNameLengthExceeds100() {
         // given
-        UUID llmId = UUID.randomUUID();
         String llmName = "a".repeat(101);
 
         // when
-        Throwable thrown = catchThrowable(() -> Llm.create(llmId, llmName, false));
+        Throwable thrown = catchThrowable(() -> Llm.create(llmName, false));
 
         // then
         assertThat(thrown).isInstanceOf(InvalidLlmNameException.class);
@@ -78,7 +46,7 @@ class LlmTest {
     @DisplayName("updateName should change llmName successfully")
     void updateName_shouldChangeLlmNameSuccessfully() {
         // given
-        Llm llm = Llm.create(UUID.randomUUID(), "gemini-1.5-flash", false);
+        Llm llm = Llm.create("gemini-1.5-flash", false);
         String updatedName = "gemini-2.0-flash";
 
         // when
@@ -89,40 +57,10 @@ class LlmTest {
     }
 
     @Test
-    @DisplayName("updateName should throw when llmName is null")
-    void updateName_shouldThrow_whenLlmNameIsNull() {
-        // given
-        Llm llm = Llm.create(UUID.randomUUID(), "gemini-1.5-flash", false);
-
-        // when
-        Throwable thrown = catchThrowable(() -> llm.updateName(null));
-
-        // then
-        assertThat(thrown).isInstanceOf(InvalidLlmNameException.class);
-        InvalidLlmNameException exception = (InvalidLlmNameException) thrown;
-        assertThat(exception.getCode()).isEqualTo(AiErrorCode.INVALID_LLM_NAME.getCode());
-    }
-
-    @Test
-    @DisplayName("updateName should throw when llmName is blank")
-    void updateName_shouldThrow_whenLlmNameIsBlank() {
-        // given
-        Llm llm = Llm.create(UUID.randomUUID(), "gemini-1.5-flash", false);
-
-        // when
-        Throwable thrown = catchThrowable(() -> llm.updateName("   "));
-
-        // then
-        assertThat(thrown).isInstanceOf(InvalidLlmNameException.class);
-        InvalidLlmNameException exception = (InvalidLlmNameException) thrown;
-        assertThat(exception.getCode()).isEqualTo(AiErrorCode.INVALID_LLM_NAME.getCode());
-    }
-
-    @Test
     @DisplayName("updateName should throw when llmName length exceeds 100")
     void updateName_shouldThrow_whenLlmNameLengthExceeds100() {
         // given
-        Llm llm = Llm.create(UUID.randomUUID(), "gemini-1.5-flash", false);
+        Llm llm = Llm.create("gemini-1.5-flash", false);
 
         // when
         Throwable thrown = catchThrowable(() -> llm.updateName("a".repeat(101)));
@@ -137,7 +75,7 @@ class LlmTest {
     @DisplayName("activate should set isActive to true")
     void activate_shouldSetIsActiveToTrue() {
         // given
-        Llm llm = Llm.create(UUID.randomUUID(), "gemini-1.5-flash", false);
+        Llm llm = Llm.create("gemini-1.5-flash", false);
 
         // when
         llm.activate();
@@ -150,7 +88,7 @@ class LlmTest {
     @DisplayName("deactivate should set isActive to false")
     void deactivate_shouldSetIsActiveToFalse() {
         // given
-        Llm llm = Llm.create(UUID.randomUUID(), "gemini-1.5-flash", true);
+        Llm llm = Llm.create("gemini-1.5-flash", true);
 
         // when
         llm.deactivate();
@@ -163,7 +101,7 @@ class LlmTest {
     @DisplayName("softDelete should mark entity as deleted")
     void softDelete_shouldMarkEntityAsDeleted() {
         // given
-        Llm llm = Llm.create(UUID.randomUUID(), "gemini-1.5-flash", false);
+        Llm llm = Llm.create("gemini-1.5-flash", false);
         Long deletedBy = 1L;
 
         // when
@@ -179,7 +117,7 @@ class LlmTest {
     @DisplayName("softDelete should keep first deleted state when called twice")
     void softDelete_shouldKeepFirstDeletedState_whenCalledTwice() {
         // given
-        Llm llm = Llm.create(UUID.randomUUID(), "gemini-1.5-flash", false);
+        Llm llm = Llm.create("gemini-1.5-flash", false);
 
         // when
         llm.softDelete(1L);
