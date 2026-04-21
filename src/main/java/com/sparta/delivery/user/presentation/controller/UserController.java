@@ -35,46 +35,50 @@ public class UserController {
 
     @Operation(summary = "내 정보 조회")
     @GetMapping("/me")
-    public ApiResponse<UserResponse> getMe(@AuthenticationPrincipal UserPrincipal principal) {
-        return ApiResponse.success(userService.getMe(principal.getId()));
+    public ResponseEntity<ApiResponse<UserResponse>> getMe(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(userService.getMe(principal.getId())));
     }
-
 
     @Operation(summary = "내 정보 수정")
     @PatchMapping("/me")
-    public ApiResponse<Void> updateMe(
+    public ResponseEntity<ApiResponse<Void>> updateMe(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody @Valid UserUpdateRequest request
     ) {
         userService.updateInfo(principal.getId(), request);
-        return ApiResponse.ok();
+        return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @Operation(summary = "비밀번호 변경 — 변경 후 기존 JWT 전부 무효화")
     @PatchMapping("/me/password")
-    public ApiResponse<Void> changePassword(
+    public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody @Valid PasswordChangeRequest request
     ) {
         userService.changePassword(principal.getId(), request);
-        return ApiResponse.ok();
+        return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @Operation(summary = "회원 탈퇴 — soft delete, 동일 이메일 재가입 허용")
     @DeleteMapping("/me")
-    public ApiResponse<Void> withdraw(@AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<ApiResponse<Void>> withdraw(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
         userService.withdraw(principal.getId());
-        return ApiResponse.ok();
+        return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @Operation(summary = "사용자 역할 변경 (관리자)")
     @PatchMapping("/{userId}/role")
     @PreAuthorize("hasAnyRole('MASTER', 'MANAGER')")
-    public ApiResponse<Void> changeRole(
+    public ResponseEntity<ApiResponse<Void>> changeRole(
+            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long userId,
             @RequestBody @Valid RoleChangeRequest request
     ) {
-        userService.changeRole(userId, request);
-        return ApiResponse.ok();
+        userService.changeRole(userId, request, principal.getId());
+        return ResponseEntity.ok(ApiResponse.ok());
     }
 }
