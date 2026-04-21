@@ -1,7 +1,9 @@
 package com.sparta.delivery.user.application;
 
 import com.sparta.delivery.user.domain.entity.User;
+import com.sparta.delivery.user.domain.entity.UserRole;
 import com.sparta.delivery.user.domain.exception.DuplicateEmailException;
+import com.sparta.delivery.user.domain.exception.ForbiddenRoleChangeException;
 import com.sparta.delivery.user.domain.exception.InvalidPasswordException;
 import com.sparta.delivery.user.domain.exception.UserNotFoundException;
 import com.sparta.delivery.user.domain.repository.UserRepository;
@@ -85,14 +87,31 @@ public class UserService {
     /**
      * 역할 변경 (관리자 기능).
      *
-     * Controller 가 @PreAuthorize("hasAnyRole('MASTER','MANAGER')") 로 호출자 권한을 먼저 거른다.
+     * 인가 규칙:
+     *  - MASTER : 모든 대상에 대해 모든 role 로 변경 가능
+     *  - MANAGER: MANAGER/MASTER 를 "생성" 또는 "대상으로 변경" 불가
+     *    → MANAGER/MASTER 를 건드리거나, 누구를 MANAGER/MASTER 로 만드는 시도 모두 차단
      *
-     * 엔티티의 changeRole() 이 incrementTokenVersion() 을 호출 →
-     * OWNER → CUSTOMER 강등 시 기존 토큰이 OWNER 권한으로 작동하는 것을 차단.
+     * actor(요청자) 정보는 Controller 의 @AuthenticationPrincipal 에서 꺼내 전달받는다.
+     * @PreAuthorize 만으로는 role 매트릭스를 표현할 수 없어 Service 에서 추가 검증.
      */
     @Transactional
-    public void changeRole(Long targetUserId, RoleChangeRequest request) {
-        findUser(targetUserId).changeRole(request.role());
+    public void changeRole(Long targetUserId, RoleChangeRequest request, Long actorId) {
+        User actor = findUser(actorId);
+        User target = findUser(targetUserId);
+        UserRole newRole = request.role();
+
+        if (actor.getRole() == UserRole.MANAGER) {
+            boolean touchingPrivilegedTarget =
+                    target.getRole() == UserRole.MANAGER || target.getRole() == UserRole.MASTER;
+            boolean promotingToPrivileged =
+                    newRole == UserRole.MANAGER || newRole == UserRole.MASTER;
+
+            if (touchingPrivilegedTarget || promotingToPrivileged) {
+                throw new ForbiddenRoleChangeException();
+            }
+        }
+        target.changeRole(newRole);
     }
 
     /** 로그인 성공 시 lastLoginAt 갱신. */
