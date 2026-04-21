@@ -60,13 +60,11 @@ public class OrderItem {
 
     @Builder
     private OrderItem(
-            Order order,
             UUID productId,
             Integer quantity,
             Integer unitPrice,
             String productNameSnapshot
     ) {
-        this.order = order;
         this.productId = productId;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
@@ -75,14 +73,12 @@ public class OrderItem {
     }
 
     public static OrderItem create(
-            Order order,
             UUID productId,
             Integer quantity,
             Integer unitPrice,
             String productNameSnapshot
     ) {
         return OrderItem.builder()
-                .order(order)
                 .productId(productId)
                 .quantity(quantity)
                 .unitPrice(unitPrice)
