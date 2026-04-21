@@ -64,6 +64,11 @@ public class User extends BaseEntity {
         this.useAiDescription = useAiDescription;
     }
 
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+        incrementTokenVersion();
+    }
+
     public void changeRole(UserRole role) {
         this.role = role;
     }
