@@ -19,11 +19,10 @@ public record UserUpdateRequest(
 
         boolean isPublic,
 
-        @Size(max = 1000, message = "AI 설명 프롬프트는 1000자 이하입니다.")
-        String useAiDescription
+        /** AI 설명 생성 기능 전역 활성화 여부 (OWNER 전용, CUSTOMER 는 무시됨) */
+        boolean useAiDescription
 ) {
         public UserUpdateRequest {
                 phone = (phone == null || phone.isBlank()) ? null : phone.strip();
-                useAiDescription = (useAiDescription == null || useAiDescription.isBlank()) ? null : useAiDescription.strip();
         }
 }

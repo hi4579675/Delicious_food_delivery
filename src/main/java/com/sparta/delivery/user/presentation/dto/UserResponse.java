@@ -12,7 +12,7 @@ public record UserResponse(
         String phone,
         UserRole role,
         boolean isPublic,
-        String useAiDescription,
+        boolean useAiDescription,
         LocalDateTime lastLoginAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -25,7 +25,7 @@ public record UserResponse(
                 user.getPhone(),
                 user.getRole(),
                 user.isPublic(),
-                user.getUseAiDescription(),
+                user.isUseAiDescription(),
                 user.getLastLoginAt(),
                 user.getCreatedAt(),
                 user.getUpdatedAt()

@@ -1,6 +1,5 @@
 package com.sparta.delivery.user.presentation.dto;
 
-import com.sparta.delivery.user.domain.entity.UserRole;
 import jakarta.validation.constraints.*;
 
 public record SignupRequest(
@@ -26,7 +25,7 @@ public record SignupRequest(
         String phone,
 
         @NotNull(message = "역할은 필수입니다.")
-        UserRole role    // CUSTOMER, OWNER, MANAGER, MASTER
+        SignupRole role    // CUSTOMER / OWNER 만 허용 — MANAGER/MASTER 자가등록 차단
 ) {
         public SignupRequest {
                 phone = (phone == null || phone.isBlank()) ? null : phone.strip();
