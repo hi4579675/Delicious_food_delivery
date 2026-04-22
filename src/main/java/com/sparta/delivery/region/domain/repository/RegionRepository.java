@@ -8,13 +8,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RegionRepository extends JpaRepository<Region, UUID> {
 
-    boolean existsByRegionCodeAndDeletedAtIsNull(String regionCode);
+    boolean existsByRegionCode(String regionCode);
 
-    Optional<Region> findByRegionIdAndDeletedAtIsNull(UUID regionId);
+    Optional<Region> findByRegionId(UUID regionId);
 
-    Optional<Region> findByRegionCodeAndDeletedAtIsNull(String regionCode);
+    Optional<Region> findByRegionCode(String regionCode);
 
-    List<Region> findByParentIdAndDeletedAtIsNull(UUID parentId);
+    List<Region> findByParentId(UUID parentId);
 
-    List<Region> findByParentIdIsNullAndDeletedAtIsNull();
+    List<Region> findByParentIdIsNull();
 }
