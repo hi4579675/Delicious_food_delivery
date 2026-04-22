@@ -1,5 +1,7 @@
 package com.sparta.delivery.address.domain.entity;
 
+import com.sparta.delivery.address.domain.exception.InvalidAddressException;
+import com.sparta.delivery.address.domain.exception.InvalidUserIdException;
 import com.sparta.delivery.common.model.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -52,11 +54,11 @@ public class Address extends BaseEntity {
             String zipCode,
             boolean isDefault
     ) {
-        this.userId = userId;
-        this.alias = alias;
-        this.address = address;
-        this.detail = detail;
-        this.zipCode = zipCode;
+        this.userId = requireUserId(userId);
+        this.alias = normalizeOptional(alias);
+        this.address = requireAddress(address);
+        this.detail = normalizeOptional(detail);
+        this.zipCode = normalizeOptional(zipCode);
         this.isDefault = isDefault;
     }
 
@@ -79,9 +81,40 @@ public class Address extends BaseEntity {
     }
 
     public void update(String alias, String address, String detail, String zipCode) {
-        this.alias = alias;
-        this.address = address;
-        this.detail = detail;
-        this.zipCode = zipCode;
+        this.alias = normalizeOptional(alias);
+        this.address = requireAddress(address);
+        this.detail = normalizeOptional(detail);
+        this.zipCode = normalizeOptional(zipCode);
+    }
+
+    public void markAsDefault() {
+        this.isDefault = true;
+    }
+
+    public void unmarkAsDefault() {
+        this.isDefault = false;
+    }
+
+    private static String requireAddress(String value) {
+        if (value == null || value.isBlank()) {
+            throw new InvalidAddressException();
+        }
+        return value.trim();
+    }
+
+    private static Long requireUserId(Long userId) {
+        if (userId == null) {
+            throw new InvalidUserIdException();
+        }
+        return userId;
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
