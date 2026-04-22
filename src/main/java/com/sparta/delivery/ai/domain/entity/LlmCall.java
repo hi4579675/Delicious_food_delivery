@@ -1,11 +1,6 @@
 package com.sparta.delivery.ai.domain.entity;
 
-import com.sparta.delivery.ai.domain.exception.InvalidCreatedByException;
-import com.sparta.delivery.ai.domain.exception.InvalidInputSnapshotException;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,6 +15,7 @@ import java.util.UUID;
 public class LlmCall {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "call_id")
     private UUID callId;
 
@@ -48,7 +44,6 @@ public class LlmCall {
     private Long createdBy;
 
     public static LlmCall create(
-            UUID callId,
             UUID llmId,
             UUID productId,
             String inputSnapshot,
@@ -57,11 +52,7 @@ public class LlmCall {
             String generatedText,
             Long createdBy
     ) {
-        validateInputSnapshot(inputSnapshot);
-        validateCreatedBy(createdBy);
-
         LlmCall llmCall = new LlmCall();
-        llmCall.callId = callId;
         llmCall.llmId = llmId;
         llmCall.productId = productId;
         llmCall.inputSnapshot = inputSnapshot;
@@ -73,17 +64,4 @@ public class LlmCall {
         return llmCall;
     }
 
-    // not null and non-blank
-    private static void validateInputSnapshot(String inputSnapshot) {
-        if (inputSnapshot == null || inputSnapshot.isBlank()) {
-            throw new InvalidInputSnapshotException();
-        }
-    }
-
-    // not null
-    private static void validateCreatedBy(Long createdBy) {
-        if (createdBy == null) {
-            throw new InvalidCreatedByException();
-        }
-    }
 }

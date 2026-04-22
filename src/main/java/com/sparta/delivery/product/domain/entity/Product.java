@@ -6,16 +6,19 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "p_product")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Product extends BaseEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "product_id")
     private UUID productId;
 
@@ -45,7 +48,6 @@ public class Product extends BaseEntity {
     private Integer displayOrder;
 
     public static Product create(
-            UUID productId,
             UUID storeId,
             String productName,
             String description,
@@ -53,14 +55,12 @@ public class Product extends BaseEntity {
             Integer price,
             Integer displayOrder
     ) {
-        validateStoreId(storeId);
         validateProductName(productName);
         validateDescriptionForCreate(description, descriptionSource);
         validatePrice(price);
         validateDisplayOrder(displayOrder);
 
         Product product = new Product();
-        product.productId = productId;
         product.storeId = storeId;
         product.productName = productName;
         product.description = description;
@@ -80,7 +80,6 @@ public class Product extends BaseEntity {
             Integer displayOrder
     ) {
         validateProductName(productName);
-        validateDescriptionForUpdate(description);
         validatePrice(price);
         validateDisplayOrder(displayOrder);
 
@@ -99,22 +98,14 @@ public class Product extends BaseEntity {
         this.isSoldOut = soldOut;
     }
 
-    // not null
-    private static void validateStoreId(UUID storeId) {
-        if (storeId == null) {
-            throw new InvalidStoreIdException();
-        }
-    }
-
-    // not null, non-blank, and max length 100
+    // max length 100
     private static void validateProductName(String productName) {
-        if (productName == null || productName.isBlank() || productName.length() > 100) {
+        if (productName.length() > 100) {
             throw new InvalidProductNameException();
         }
-
     }
 
-    // relations between description and description source
+    // description and descriptionSource must be both null or both non-null
     private static void validateDescriptionForCreate(String description, DescriptionSource descriptionSource) {
         if (description == null && descriptionSource != null) {
             throw new InvalidProductDescriptionException();
@@ -125,21 +116,14 @@ public class Product extends BaseEntity {
         }
     }
 
-    // nullable, but blank-only description is not allowed
-    private static void validateDescriptionForUpdate(String description) {
-        if (description != null && description.isBlank()) {
-            throw new InvalidProductDescriptionException();
-        }
-    }
-
-    // not null and greater than 0
+    // greater than 0
     private static void validatePrice(Integer price) {
-        if (price == null || price <= 0) {
+        if (price <= 0) {
             throw new InvalidProductPriceException();
         }
     }
 
-    // greater than or equal to 0
+    // nullable, but if present must be >= 0
     private static void validateDisplayOrder(Integer displayOrder) {
         if (displayOrder != null && displayOrder < 0) {
             throw new InvalidDisplayOrderException();

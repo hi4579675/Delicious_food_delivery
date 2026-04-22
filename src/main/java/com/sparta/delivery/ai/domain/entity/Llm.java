@@ -3,23 +3,23 @@ package com.sparta.delivery.ai.domain.entity;
 
 import com.sparta.delivery.ai.domain.exception.InvalidLlmNameException;
 import com.sparta.delivery.common.model.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "p_llms")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Llm extends BaseEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "llm_id")
     private UUID llmId;
 
@@ -29,11 +29,10 @@ public class Llm extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     private boolean isActive;
 
-    public static Llm create(UUID llmId, String llmName, boolean isActive) {
+    public static Llm create(String llmName, boolean isActive) {
         validateLlmName(llmName);
 
         Llm llm = new Llm();
-        llm.llmId = llmId;
         llm.llmName = llmName;
         llm.isActive = isActive;
 
@@ -55,7 +54,7 @@ public class Llm extends BaseEntity {
 
     // not null, non-blank and max length 100
     private static void validateLlmName(String llmName) {
-        if (llmName == null || llmName.isBlank() || llmName.length() > 100) {
+        if (llmName.length() > 100) {
             throw new InvalidLlmNameException();
         }
     }
