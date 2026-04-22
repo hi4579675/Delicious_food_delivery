@@ -48,6 +48,15 @@ public class UserService {
 
     }
 
+    /**
+     * userId 로 활성 사용자 조회.
+     * JwtAuthenticationFilter 의 tokenVersion 비교 및 Principal 생성에 사용.
+     * 탈퇴된 유저는 @SQLRestriction 에 의해 UserNotFoundException 으로 올라옴.
+     */
+    public User findById(Long userId) {
+        return findUser(userId);
+    }
+
     /** 내 정보 조회 */
     public UserResponse getMe(Long userId) {
         return UserResponse.from(findUser(userId));
@@ -143,4 +152,6 @@ public class UserService {
         return userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
     }
+
+
 }

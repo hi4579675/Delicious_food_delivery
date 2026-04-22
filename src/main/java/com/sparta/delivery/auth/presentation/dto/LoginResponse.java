@@ -1,4 +1,4 @@
-package com.sparta.delivery.user.presentation.dto;
+package com.sparta.delivery.auth.presentation.dto;
 
 /**
  * 로그인 응답 DTO.
