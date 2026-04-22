@@ -12,10 +12,12 @@ import java.util.UUID;
 
 import com.sparta.delivery.user.domain.entity.UserRole;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AddressService {
@@ -30,7 +32,10 @@ public class AddressService {
         }
 
         Address address = createAddress(userId, request, shouldBeDefault);
-        return AddressResponse.from(addressRepository.save(address));
+        Address savedAddress = addressRepository.save(address);
+        log.info("배송지 등록 완료 - userId={}, addressId={}, 기본배송지={}",
+                userId, savedAddress.getAddressId(), savedAddress.isDefault());
+        return AddressResponse.from(savedAddress);
     }
 
     public List<AddressResponse> getAddresses(Long userId) {
@@ -47,6 +52,7 @@ public class AddressService {
     public AddressResponse update(Long userId, UUID addressId, AddressUpdateRequest request) {
         Address address = getOwnedAddress(userId, addressId);
         updateAddress(address, request);
+        log.info("배송지 수정 완료 - userId={}, addressId={}", userId, addressId);
         return AddressResponse.from(address);
     }
 
@@ -55,6 +61,7 @@ public class AddressService {
         Address target = getOwnedAddress(userId, addressId);
         changeDefaultAddress(userId, target.getAddressId());
         target.markAsDefault();
+        log.info("기본 배송지 변경 완료 - userId={}, addressId={}", userId, addressId);
         return AddressResponse.from(target);
     }
 
@@ -65,6 +72,8 @@ public class AddressService {
         boolean wasDefault = address.isDefault();
 
         address.softDelete(actorId);
+        log.info("배송지 삭제 완료 - actorId={}, addressId={}, 기본배송지여부={}",
+                actorId, addressId, wasDefault);
 
         setLatestAddressAsDefault(ownerId, wasDefault);
     }
@@ -117,7 +126,11 @@ public class AddressService {
 
         addressRepository.findAllByUserIdOrderByCreatedAtDesc(ownerId).stream()
                 .findFirst()
-                .ifPresent(Address::markAsDefault);
+                .ifPresent(address -> {
+                    address.markAsDefault();
+                    log.info("기본 배송지 재지정 완료 - userId={}, addressId={}",
+                            ownerId, address.getAddressId());
+                });
     }
 
     private Address getOwnedAddress(Long userId, UUID addressId) {
