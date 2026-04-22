@@ -7,9 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface LlmRepository extends JpaRepository<Llm, UUID> {
 
-    Optional<Llm> findByLlmIdAndDeletedAtIsNull(UUID llmId);
+    Optional<Llm> findByLlmId(UUID llmId);
 
-    Optional<Llm> findByIsActiveTrueAndDeletedAtIsNull();
+    Optional<Llm> findByIsActiveTrue();
 
-    boolean existsByLlmNameAndDeletedAtIsNull(String llmName);
+    boolean existsByLlmName(String llmName);
 }
