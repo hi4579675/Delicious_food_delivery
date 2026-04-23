@@ -4,6 +4,8 @@ import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.common.response.ApiResponse;
 import com.sparta.delivery.product.application.ProductService;
 import com.sparta.delivery.product.presentation.dto.request.ProductCreateRequest;
+import com.sparta.delivery.product.presentation.dto.request.ProductHiddenUpdateRequest;
+import com.sparta.delivery.product.presentation.dto.request.ProductSoldOutUpdateRequest;
 import com.sparta.delivery.product.presentation.dto.request.ProductUpdateRequest;
 import com.sparta.delivery.product.presentation.dto.response.ProductResponse;
 import com.sparta.delivery.user.domain.entity.UserRole;
@@ -94,6 +96,58 @@ public class ProductController {
                 UserRole.valueOf(principal.getRole()),
                 productId,
                 request
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "상품 숨김 상태 변경")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'MASTER')")
+    @PatchMapping("/products/{productId}/hidden")
+    public ResponseEntity<ApiResponse<ProductResponse>> changeHidden(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID productId,
+            @RequestBody ProductHiddenUpdateRequest request
+            ) {
+        ProductResponse response = productService.changeHidden(
+                principal.getId(),
+                UserRole.valueOf(principal.getRole()),
+                productId,
+                request
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "상품 품절 상태 변경")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'MASTER')")
+    @PatchMapping("/products/{productId}/sold-out")
+    public ResponseEntity<ApiResponse<ProductResponse>> changeSoldOut(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID productId,
+            @RequestBody ProductSoldOutUpdateRequest request
+            ) {
+        ProductResponse response = productService.changeSoldOut(
+                principal.getId(),
+                UserRole.valueOf(principal.getRole()),
+                productId,
+                request
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "상품 삭제")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'MASTER')")
+    @DeleteMapping("/products/{productId}")
+    public ResponseEntity<ApiResponse<ProductResponse>> deleteProduct(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID productId
+    ) {
+        ProductResponse response = productService.delete(
+                principal.getId(),
+                UserRole.valueOf(principal.getRole()),
+                productId
         );
 
         return ResponseEntity.ok(ApiResponse.success(response));

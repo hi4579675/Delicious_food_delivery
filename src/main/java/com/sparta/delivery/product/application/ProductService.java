@@ -7,6 +7,8 @@ import com.sparta.delivery.product.domain.exception.ProductForbiddenException;
 import com.sparta.delivery.product.domain.exception.ProductNotFoundException;
 import com.sparta.delivery.product.domain.repository.ProductRepository;
 import com.sparta.delivery.product.presentation.dto.request.ProductCreateRequest;
+import com.sparta.delivery.product.presentation.dto.request.ProductHiddenUpdateRequest;
+import com.sparta.delivery.product.presentation.dto.request.ProductSoldOutUpdateRequest;
 import com.sparta.delivery.product.presentation.dto.request.ProductUpdateRequest;
 import com.sparta.delivery.product.presentation.dto.response.ProductResponse;
 import com.sparta.delivery.store.domain.entity.Store;
@@ -102,6 +104,45 @@ public class ProductService {
         );
 
         log.info("상품 수정 완료 - actorID={}, storeId={}, productId={}", actorId, store.getStoreId(), product.getProductId());
+        return ProductResponse.from(product);
+    }
+
+    @Transactional
+    public ProductResponse changeHidden(Long actorId, UserRole actorRole, UUID productId, ProductHiddenUpdateRequest request) {
+        Product product = getProductOrThrow(productId);
+        Store store = getStoreOrThrow(product.getStoreId());
+        validateProductWritePermission(actorId, actorRole, store);
+
+        product.changeHidden(request.hidden());
+
+        log.info("상품 숨김 상태 변경 완료 - actorId={}, storeId={}, productId={}, hidden={}",
+                actorId, store.getStoreId(), product.getProductId(), request.hidden());
+        return ProductResponse.from(product);
+    }
+
+    @Transactional
+    public ProductResponse changeSoldOut(Long actorId, UserRole actorRole, UUID productId, ProductSoldOutUpdateRequest request) {
+        Product product = getProductOrThrow(productId);
+        Store store = getStoreOrThrow(product.getStoreId());
+        validateProductWritePermission(actorId, actorRole, store);
+
+        product.changeSoldOut(request.soldOut());
+
+        log.info("상품 숨김 상태 변경 완료 - actorId={}, storeId={}, productId={}, soldOUt={}",
+                actorId, store.getStoreId(), product.getProductId(), request.soldOut());
+        return ProductResponse.from(product);
+    }
+
+    @Transactional
+    public ProductResponse delete(Long actorId, UserRole actorRole, UUID productId) {
+        Product product = getProductOrThrow(productId);
+        Store store = getStoreOrThrow(product.getStoreId());
+        validateProductWritePermission(actorId, actorRole, store);
+
+        product.softDelete(actorId);
+
+        log.info("상품 삭제 완료 -  - actorId={}, storeId={}, productId={}",
+                actorId, store.getStoreId(), product.getProductId());
         return ProductResponse.from(product);
     }
 
