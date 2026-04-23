@@ -14,6 +14,8 @@ public interface RegionRepository extends JpaRepository<Region, UUID> {
 
     Optional<Region> findByRegionCode(String regionCode);
 
+    List<Region> findByRegionNameContaining(String keyword);
+
     List<Region> findByParentId(UUID parentId);
 
     List<Region> findByParentIdIsNull();

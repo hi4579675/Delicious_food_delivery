@@ -13,9 +13,11 @@ import com.sparta.delivery.region.presentation.dto.RegionUpdateRequest;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -37,13 +39,34 @@ public class RegionService {
                 request.isActive()
         );
 
-        return RegionResponse.from(regionRepository.save(region));
+        Region savedRegion = regionRepository.save(region);
+
+        log.info("지역 생성 완료 - regionCode={}, regionName={}, parentId={}, depth={}, 활성여부={}",
+                savedRegion.getRegionCode(),
+                savedRegion.getRegionName(),
+                savedRegion.getParentId(),
+                savedRegion.getDepth(),
+                savedRegion.getIsActive());
+
+        return RegionResponse.from(savedRegion);
     }
 
     /** 지역 단건 조회 */
     public RegionResponse getRegion(UUID regionId) {
         Region region = getRegionOrThrow(regionId);
         return RegionResponse.from(region);
+    }
+
+    /** keyword가 있으면 지역명으로 검색하고, 없으면 전체 지역 목록을 조회한다. */
+    public List<RegionResponse> searchRegions(String keyword) {
+        String normalizedKeyword = keyword == null ? null : keyword.trim();
+        List<Region> regions = (normalizedKeyword == null || normalizedKeyword.isBlank())
+                ? regionRepository.findAll()
+                : regionRepository.findByRegionNameContaining(normalizedKeyword);
+
+        return regions.stream()
+                .map(RegionResponse::from)
+                .toList();
     }
 
     /** 최상위 지역 목록 조회 */
@@ -79,6 +102,13 @@ public class RegionService {
                 request.isActive()
         );
 
+        log.info("지역 수정 완료 - regionId={}, regionName={}, parentId={}, depth={}, 활성여부={}",
+                regionId,
+                region.getRegionName(),
+                region.getParentId(),
+                region.getDepth(),
+                region.getIsActive());
+
         return RegionResponse.from(region);
     }
 
@@ -92,6 +122,12 @@ public class RegionService {
         }
 
         region.softDelete(currentUserId);
+
+        log.info("지역 삭제 완료 - actorId={}, regionId={}, regionCode={}, regionName={}",
+                currentUserId,
+                regionId,
+                region.getRegionCode(),
+                region.getRegionName());
     }
 
     /** 지역 조회, 없으면 예외 */
