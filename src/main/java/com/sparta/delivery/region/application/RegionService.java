@@ -59,9 +59,10 @@ public class RegionService {
 
     /** keyword가 있으면 지역명으로 검색하고, 없으면 전체 지역 목록을 조회한다. */
     public List<RegionResponse> searchRegions(String keyword) {
-        List<Region> regions = (keyword == null || keyword.isBlank())
+        String normalizedKeyword = keyword == null ? null : keyword.trim();
+        List<Region> regions = (normalizedKeyword == null || normalizedKeyword.isBlank())
                 ? regionRepository.findAll()
-                : regionRepository.findByRegionNameContaining(keyword);
+                : regionRepository.findByRegionNameContaining(normalizedKeyword);
 
         return regions.stream()
                 .map(RegionResponse::from)

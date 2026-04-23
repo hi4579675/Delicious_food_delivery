@@ -330,6 +330,31 @@ class RegionServiceTest {
         }
 
         @Test
+        @DisplayName("keyword 앞뒤 공백을 제거하고 지역명으로 검색한다")
+        void searchRegions_success_withTrimmedKeyword() {
+            // given
+            Region jongno = Region.create(
+                    "1111000000",
+                    "종로구",
+                    UUID.randomUUID(),
+                    2,
+                    true
+            );
+
+            given(regionRepository.findByRegionNameContaining("종로"))
+                    .willReturn(List.of(jongno));
+
+            // when
+            var responses = regionService.searchRegions(" 종로 ");
+
+            // then
+            assertThat(responses).hasSize(1);
+            assertThat(responses.get(0).regionName()).isEqualTo("종로구");
+
+            then(regionRepository).should().findByRegionNameContaining("종로");
+        }
+
+        @Test
         @DisplayName("최상위 지역 목록을 조회한다")
         void getRootRegions_success() {
             // given
