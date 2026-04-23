@@ -21,6 +21,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import com.sparta.delivery.common.model.BaseEntity;
+import com.sparta.delivery.payment.domain.exception.InvalidOrderIdException;
+import com.sparta.delivery.payment.domain.exception.InvalidPaymentMethodException;
+import com.sparta.delivery.payment.domain.exception.InvalidPaymentStatusTransitionException;
+import com.sparta.delivery.payment.domain.exception.InvalidTotalPriceException;
 
 @Entity
 @Table(name = "p_payment", uniqueConstraints = {@UniqueConstraint(name = "uk_payment_order_id", columnNames = "order_id")})
@@ -87,32 +91,44 @@ public class Payment extends BaseEntity {
                 .build();
     }
 
+    private static void validate(UUID orderId, PaymentMethod paymentMethod, Integer totalPrice) {
+        if (orderId == null) throw new InvalidOrderIdException();
+        if (paymentMethod == null) throw new InvalidPaymentMethodException();
+        if (totalPrice == null || totalPrice <= 0) throw new InvalidTotalPriceException();
+    }
+
+    private static String normalizeNullableText(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     public void approve(String pgProvider, String pgTransactionId) {
         if(this.paymentStatus != PaymentStatus.PENDING) {
-            throw new IllegalStateException();
+            throw new InvalidPaymentStatusTransitionException();
         }
 
         this.paymentStatus = PaymentStatus.APPROVED;
         this.approvedAt = LocalDateTime.now();
-        this.pgProvider = pgProvider;
-        this.pgTransactionId = pgTransactionId;
+        this.pgProvider = normalizeNullableText(pgProvider);
+        this.pgTransactionId = normalizeNullableText(pgTransactionId);
     }
 
     public void fail(String failureReason) {
 
         if(this.paymentStatus != PaymentStatus.PENDING) {
-            throw new IllegalStateException();
+            throw new InvalidPaymentStatusTransitionException();
         }
 
         this.paymentStatus = PaymentStatus.FAILED;
         this.failedAt = LocalDateTime.now();
-        this.failureReason = failureReason;
+        this.failureReason = normalizeNullableText(failureReason);
     }
 
     public void cancel() {
 
         if(this.paymentStatus != PaymentStatus.APPROVED) {
-            throw new IllegalStateException();
+            throw new InvalidPaymentStatusTransitionException();
         }
 
         this.cancelledAt = LocalDateTime.now();
