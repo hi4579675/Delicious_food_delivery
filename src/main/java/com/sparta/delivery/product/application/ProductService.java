@@ -1,0 +1,114 @@
+package com.sparta.delivery.product.application;
+
+import com.sparta.delivery.product.domain.entity.DescriptionSource;
+import com.sparta.delivery.product.domain.entity.Product;
+import com.sparta.delivery.product.domain.exception.DuplicateProductNameException;
+import com.sparta.delivery.product.domain.exception.ProductForbiddenException;
+import com.sparta.delivery.product.domain.exception.ProductNotFoundException;
+import com.sparta.delivery.product.domain.repository.ProductRepository;
+import com.sparta.delivery.product.presentation.dto.request.ProductCreateRequest;
+import com.sparta.delivery.product.presentation.dto.request.ProductUpdateRequest;
+import com.sparta.delivery.product.presentation.dto.response.ProductResponse;
+import com.sparta.delivery.store.domain.entity.Store;
+import com.sparta.delivery.store.domain.repository.StoreRepository;
+import com.sparta.delivery.user.domain.entity.UserRole;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class ProductService {
+
+    private final ProductRepository productRepository;
+    private final StoreRepository storeRepository;
+
+    @Transactional
+    public ProductResponse create(Long actorId, UserRole actorRole, UUID storeId, ProductCreateRequest request) {
+        /**
+         * v1: AI 상품설명 자동 생성 기능을 배제한 상품 생성
+         */
+        Store store = getStoreOrThrow(storeId);
+        validateProductWritePermission(actorId, actorRole, store);
+        validateDuplicateProductName(storeId, request.productName());
+        Product product = createProduct(storeId, request);
+        Product savedProduct = productRepository.save(product);
+
+        log.info("상품 등록 완료 - actorID={}, storeId={}, productId={}", actorId, storeId, savedProduct.getProductId());
+        return ProductResponse.from(savedProduct);
+    }
+
+    @Transactional
+    public ProductResponse update(Long actorId, UserRole actorRole, UUID productId, ProductUpdateRequest request) {
+        /**
+         * 상품 일반 정보 수정. AI 자동 생성은 추후에도 반영하지 않음. AI설명 재생성 API를 따로 만들 예정.
+         */
+        Product product = getProductOrThrow(productId);
+        Store store = getStoreOrThrow(product.getStoreId());
+        validateProductWritePermission(actorId, actorRole, store);
+        validateDuplicateProductNameOnUpdate(product, request.productName());
+        product.updateInfo(
+                request.productName(),
+                request.description(),
+                request.price(),
+                request.displayOrder()
+        );
+
+        log.info("상품 수정 완료 - actorID={}, storeId={}, productId={}", actorId, store.getStoreId(), product.getProductId());
+        return ProductResponse.from(product);
+    }
+
+
+    private Store getStoreOrThrow(UUID storeId) {
+        // TODO: Store 엔티티에 SQLRestriction 반영 즉시 일반 쿼리 메소드로 변경
+        // TODO: Store 도메인 예외 구현 즉시 해당 예외로 변경
+        return storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)
+                .orElseThrow(IllegalArgumentException::new);
+    }
+    private Product getProductOrThrow(UUID productId) {
+        // 존재하는 상품인지 확인
+        return productRepository.findByProductId(productId)
+                .orElseThrow(ProductNotFoundException::new);
+    }
+
+    private void validateProductWritePermission(Long actorId, UserRole actorRole, Store store) {
+        // 특정 상품을 수정할 수 있는 권한인지 확인: 해당 상품의 소유주 혹은 관리자
+        if (actorRole == UserRole.MANAGER || actorRole == UserRole.MASTER) {
+            return;
+        }
+        if (actorRole == UserRole.OWNER && store.getUserId().equals(actorId)) {
+            return;
+        }
+        throw new ProductForbiddenException();
+    }
+
+    private void validateDuplicateProductName(UUID storeId, String productName) {
+        // e
+        if (productRepository.existsByStoreIdAndProductName(storeId, productName)) {
+            throw new DuplicateProductNameException();
+        }
+    }
+
+    private void validateDuplicateProductNameOnUpdate(Product product,String productName) {
+        boolean nameChanged = !product.getProductName().equals(productName);
+        if (nameChanged && productRepository.existsByStoreIdAndProductName(product.getStoreId(), productName)) {
+            throw new DuplicateProductNameException();
+        }
+    }
+
+    private Product createProduct(UUID storeId, ProductCreateRequest request) {
+        return Product.create(
+                storeId,
+                request.productName(),
+                request.description(),
+                request.description() == null ? null : DescriptionSource.MANUAL,
+                request.price(),
+                request.displayOrder()
+        );
+    }
+}
