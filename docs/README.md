@@ -10,10 +10,13 @@
 | 상황                   | 읽을 문서 |
 |----------------------|----------|
 | 처음 봐요                | [000 → 001 → 004](#문서-구성) 순서로 읽기 |
+| **"DTO 어디 두지? Command는?"** 자주 묻는 것 | **[009. 팀 FAQ](./009-conventions-faq.md)** |
 | "이 기능이 뭔지" 알고 싶어요    | [001. 도메인 명세](./001-domain-spec.md) |
 | ERD나 DB 구조가 궁금해요     | [002. 데이터 명세](./002-data-spec.md) |
 | "어디에 어떤 코드 놓지?" 헷갈려요 | [004. 아키텍처 가이드](./004-architecture.md) |
 | 엔티티 만들 때 규칙 확인       | [005. JPA 엔티티 설계 가이드](./005-jpa-guidelines.md) |
+| 공통 응답/예외/BaseEntity 사용법 | [007. 공통 기반 가이드](./007-common-foundation-guide.md) |
+| 예외 클래스 설계 근거         | [008. 예외 처리 전략](./008-exception-strategy.md) |
 | PR/커밋/브랜치 규칙         | [006. 팀 협업 컨벤션](./006-conventions.md) |
 | 배포/환경변수              | [003. 인프라 명세](./003-infrastructure.md) |
 
@@ -30,6 +33,9 @@
 | 004 | [아키텍처 가이드](./004-architecture.md) | 패키지 구조, 계층별 역할, 코드 배치 규칙 |
 | 005 | [JPA 엔티티 설계 가이드](./005-jpa-guidelines.md) | 연관관계 매핑, 순환참조/영속성 규칙 |
 | 006 | [팀 협업 컨벤션](./006-conventions.md) | 브랜치, 커밋, PR, 이슈 규칙 |
+| 007 | [공통 기반 사용 가이드](./007-common-foundation-guide.md) | BaseEntity, ApiResponse, 예외 던지는 법, 컨트롤러 응답 |
+| 008 | [예외 처리 전략](./008-exception-strategy.md) | ErrorCode / 개별 예외 클래스 설계 근거 |
+| 009 | [팀 FAQ](./009-conventions-faq.md) | 자주 헷갈리는 것 (DTO/Command/Repository/의존성 등) |
 
 ---
 
@@ -48,6 +54,9 @@
 
 - `004-architecture.md` — 패키지/계층 구조
 - `005-jpa-guidelines.md` — JPA 엔티티 규칙
+- `007-common-foundation-guide.md` — 공통 기반 사용법 (BaseEntity, ApiResponse, 예외)
+- `008-exception-strategy.md` — 예외 처리 전략
+- `009-conventions-faq.md` — 팀 FAQ (자주 묻는 것)
 
 ### 협업 규칙
 - `006-conventions.md` — 브랜치/커밋/PR/이슈

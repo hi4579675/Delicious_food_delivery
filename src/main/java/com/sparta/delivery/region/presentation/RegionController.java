@@ -61,6 +61,20 @@ public class RegionController {
         return ResponseEntity.ok(ApiResponse.success(regionService.searchRegions(keyword)));
     }
 
+    @Operation(summary = "최상위 지역 목록 조회")
+    @GetMapping("/root")
+    public ResponseEntity<ApiResponse<List<RegionResponse>>> getRootRegions() {
+        return ResponseEntity.ok(ApiResponse.success(regionService.getRootRegions()));
+    }
+
+    @Operation(summary = "하위 지역 목록 조회")
+    @GetMapping("/{parentId}/children")
+    public ResponseEntity<ApiResponse<List<RegionResponse>>> getChildRegions(
+            @PathVariable UUID parentId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(regionService.getChildRegions(parentId)));
+    }
+
     @Operation(summary = "지역 수정")
     @PutMapping("/{regionId}")
     @PreAuthorize("hasAnyRole('MANAGER', 'MASTER')")

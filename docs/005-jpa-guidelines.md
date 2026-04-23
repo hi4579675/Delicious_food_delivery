@@ -262,23 +262,27 @@ orderItemRepository.saveAll(buildItems(saved));
 
 삭제는 DB FK Cascade가 아닌 Soft Delete로 처리합니다.
 
+**정책**: `@SQLRestriction`만 사용, `@SQLDelete`는 사용하지 않음.
+
 ```java
 @Entity
 @Table(name = "p_store")
-@SQLDelete(sql = "UPDATE p_store SET deleted_at = now() WHERE store_id = ?")
-@Where(clause = "deleted_at IS NULL")
+@SQLRestriction("deleted_at IS NULL")   // 조회 시 삭제된 행 자동 제외
 public class Store extends BaseEntity { }
 ```
 
-또는 서비스에서 명시적으로 처리:
+삭제는 서비스에서 **명시적으로** 호출:
 
 ```java
 @Transactional
 public void deleteStore(UUID storeId) {
     Store store = storeRepository.findById(storeId).orElseThrow();
-    store.softDelete(currentUserId);
+    store.softDelete(currentUserId);   // deleted_at + deleted_by 동시 기록
 }
 ```
+
+> **왜 `@SQLDelete`를 쓰지 않나요?**
+> `@SQLDelete`는 DELETE SQL을 자동으로 UPDATE로 바꾸지만, 정적 SQL 템플릿이라 **`deleted_by` (누가 삭제했는지)를 기록할 수 없습니다.** Security Context의 userId를 주입할 수 없기 때문. 감사 추적을 위해 서비스에서 `softDelete(currentUserId)`를 직접 호출하는 방식만 사용합니다.
 
 ---
 

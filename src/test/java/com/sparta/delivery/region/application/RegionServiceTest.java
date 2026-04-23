@@ -3,7 +3,6 @@ package com.sparta.delivery.region.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.never;
 import static org.mockito.BDDMockito.then;
@@ -328,6 +327,67 @@ class RegionServiceTest {
             assertThat(responses.get(0).parentId()).isEqualTo(parentId);
 
             then(regionRepository).should().findByRegionNameContaining("종로");
+        }
+
+        @Test
+        @DisplayName("최상위 지역 목록을 조회한다")
+        void getRootRegions_success() {
+            // given
+            Region seoul = Region.create(
+                    "1100000000",
+                    "서울특별시",
+                    null,
+                    1,
+                    true
+            );
+
+            Region busan = Region.create(
+                    "2600000000",
+                    "부산광역시",
+                    null,
+                    1,
+                    true
+            );
+
+            given(regionRepository.findByParentIdIsNull()).willReturn(List.of(seoul, busan));
+
+            // when
+            var responses = regionService.getRootRegions();
+
+            // then
+            assertThat(responses).hasSize(2);
+            assertThat(responses)
+                    .extracting("regionName")
+                    .containsExactly("서울특별시", "부산광역시");
+
+            then(regionRepository).should().findByParentIdIsNull();
+        }
+
+        @Test
+        @DisplayName("하위 지역 목록을 조회한다")
+        void getChildRegions_success() {
+            // given
+            UUID parentId = UUID.randomUUID();
+
+            Region jongno = Region.create(
+                    "1111000000",
+                    "종로구",
+                    parentId,
+                    2,
+                    true
+            );
+
+            given(regionRepository.findByParentId(parentId)).willReturn(List.of(jongno));
+
+            // when
+            var responses = regionService.getChildRegions(parentId);
+
+            // then
+            assertThat(responses).hasSize(1);
+            assertThat(responses.get(0).regionName()).isEqualTo("종로구");
+            assertThat(responses.get(0).parentId()).isEqualTo(parentId);
+
+            then(regionRepository).should().findByParentId(parentId);
         }
     }
 

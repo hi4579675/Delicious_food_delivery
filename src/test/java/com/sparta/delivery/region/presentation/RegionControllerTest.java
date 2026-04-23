@@ -14,11 +14,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sparta.delivery.auth.infrastructure.jwt.JwtAuthenticationEntryPoint;
+import com.sparta.delivery.auth.infrastructure.jwt.JwtProvider;
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.region.application.RegionService;
 import com.sparta.delivery.region.presentation.dto.RegionCreateRequest;
 import com.sparta.delivery.region.presentation.dto.RegionResponse;
 import com.sparta.delivery.region.presentation.dto.RegionUpdateRequest;
+import com.sparta.delivery.user.application.UserService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -42,6 +45,15 @@ class RegionControllerTest {
 
     @MockitoBean
     private RegionService regionService;
+
+    @MockitoBean
+    private JwtProvider jwtProvider;
+
+    @MockitoBean
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    @MockitoBean
+    private UserService userService;
 
     @Nested
     @DisplayName("지역 생성 API")
@@ -164,6 +176,59 @@ class RegionControllerTest {
                     .andExpect(jsonPath("$.data.regionName").value("서울특별시"));
 
             then(regionService).should().getRegion(regionId);
+        }
+
+        @Test
+        @DisplayName("최상위 지역 목록을 조회한다")
+        void getRootRegions_success() throws Exception {
+            // given
+            RegionResponse response = new RegionResponse(
+                    UUID.randomUUID(),
+                    "1100000000",
+                    "서울특별시",
+                    null,
+                    1,
+                    true
+            );
+
+            given(regionService.getRootRegions()).willReturn(List.of(response));
+
+            // when & then
+            mockMvc.perform(get("/api/v1/regions/root")
+                            .with(authentication(managerAuthentication())))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data[0].regionCode").value("1100000000"))
+                    .andExpect(jsonPath("$.data[0].parentId").doesNotExist());
+
+            then(regionService).should().getRootRegions();
+        }
+
+        @Test
+        @DisplayName("특정 지역의 하위 지역 목록을 조회한다")
+        void getChildRegions_success() throws Exception {
+            // given
+            UUID parentId = UUID.randomUUID();
+            RegionResponse response = new RegionResponse(
+                    UUID.randomUUID(),
+                    "1111000000",
+                    "종로구",
+                    parentId,
+                    2,
+                    true
+            );
+
+            given(regionService.getChildRegions(parentId)).willReturn(List.of(response));
+
+            // when & then
+            mockMvc.perform(get("/api/v1/regions/{parentId}/children", parentId)
+                            .with(authentication(managerAuthentication())))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data[0].regionCode").value("1111000000"))
+                    .andExpect(jsonPath("$.data[0].parentId").value(parentId.toString()));
+
+            then(regionService).should().getChildRegions(parentId);
         }
     }
 

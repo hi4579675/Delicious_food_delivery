@@ -68,6 +68,20 @@ public class RegionService {
                 .toList();
     }
 
+    /** 최상위 지역 목록 조회 */
+    public List<RegionResponse> getRootRegions() {
+        return regionRepository.findByParentIdIsNull().stream()
+                .map(RegionResponse::from)
+                .toList();
+    }
+
+    /** 특정 지역의 하위 지역 목록 조회 */
+    public List<RegionResponse> getChildRegions(UUID parentId) {
+        return regionRepository.findByParentId(parentId).stream()
+                .map(RegionResponse::from)
+                .toList();
+    }
+
     /** 지역 정보 수정 */
     @Transactional
     public RegionResponse updateRegion(UUID regionId, RegionUpdateRequest request) {

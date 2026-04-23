@@ -8,7 +8,7 @@
 
 ## 한 줄 요약
 
-모든 테이블은 `p_` 접두사, PK는 `UUID` (User만 `BIGINT`), 모든 엔티티는 `BaseEntity` 상속으로 감사 필드 자동 관리, Soft Delete 기본.
+모든 테이블은 `p_` 접두사, PK는 `UUID` (User만 `BIGINT`), 대부분의 엔티티는 `BaseEntity` 상속으로 감사 필드 자동 관리(로그성 테이블 예외), Soft Delete 기본.
 
 ---
 
@@ -80,8 +80,9 @@ ERD, 테이블 명세, 데이터 규약을 정의합니다.
 
 ### 3-4. Soft Delete
 
-- 삭제 시 물리 DELETE 대신 `deleted_at`, `deleted_by`만 기록
-- 조회 시 `deleted_at IS NULL` 조건 자동 적용 (`@Where` 또는 `@SQLDelete`)
+- 삭제 시 물리 DELETE 대신 `deleted_at`, `deleted_by`만 기록 (서비스에서 `entity.softDelete(currentUserId)` **명시적 호출**)
+- 조회 시 `deleted_at IS NULL` 조건 자동 적용 — `@SQLRestriction`만 사용
+- `@SQLDelete`는 **사용하지 않음** (DELETE SQL을 자동 override하면 `deleted_by`를 기록할 수 없음)
 
 ### 3-5. 숨김 vs 삭제
 
@@ -105,8 +106,9 @@ ERD, 테이블 명세, 데이터 규약을 정의합니다.
 
 | 테이블 | 필드 | 보존 시점 |
 |--------|------|----------|
-| `p_order_items` | `unit_price`, `line_total_price`, `product_name_snapshot` | 주문 시점 |
-| `p_llm_calls` | `input_snapshot` | AI 요청 시점 |
+| `p_order` | `delivery_address_snapshot` | 주문 시점 배송지 전체 주소 |
+| `p_order_items` | `unit_price`, `line_total_price`, `product_name_snapshot` | 주문 시점 단가/합계/상품명 |
+| `p_llm_calls` | `input_snapshot` (`jsonb`) | AI 요청 시점 원문 |
 
 ---
 

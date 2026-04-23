@@ -71,7 +71,6 @@
 | `user` ↔ `address` | 1:N | 사용자별 여러 배송지 |
 | `user` ↔ `ai` (요청 로그) | 1:N | 사용자별 여러 AI 요청 |
 | `region` ↔ `store` | 1:N | 지역별 여러 가게 |
-| `store_category` ↔ `store` | 1:N | 카테고리별 여러 가게 |
 | `store` ↔ `product` | 1:N | 가게별 여러 메뉴 |
 | `store` ↔ `order` | 1:N | 가게별 여러 주문 |
 | `store` ↔ `review` | 1:N | 가게별 여러 리뷰 (역정규화 필드 존재) |
@@ -116,11 +115,13 @@
 
 ```
 PENDING (주문요청, CUSTOMER)
-  → ACCEPTED (주문수락, OWNER)
-    → COOKING (조리완료, OWNER)
-      → DELIVERING (배송수령, OWNER)
-        → DELIVERED (배송완료, OWNER)
-          → COMPLETED (주문완료, OWNER)
+  ├─→ CANCELED (CUSTOMER 5분 이내 / MASTER)
+  └─→ ACCEPTED (주문수락, OWNER)
+        ├─→ CANCELED (MASTER)
+        └─→ COOKING (조리완료, OWNER)
+              → DELIVERING (배송수령, OWNER)
+                → DELIVERED (배송완료, OWNER)
+                  → COMPLETED (주문완료, OWNER)
 ```
 
 ### 상태별 정의
@@ -148,8 +149,8 @@ PENDING (주문요청, CUSTOMER)
 
 ### 6-1. 사용자
 
-- `username`: 4자 이상 10자 이하, 알파벳 소문자(a~z) + 숫자(0~9)
-- `password`: 8자 이상 15자 이하, 대소문자 + 숫자 + 특수문자 포함
+- `email`: 이메일 형식, 로그인 식별자
+- `name`: 2자 이상 20자 이하 (중복 허용 닉네임)
 - `MANAGER`는 `MASTER`만 생성 가능 (권한 매트릭스 참고)
 
 ### 6-2. 주문
@@ -182,7 +183,7 @@ PENDING (주문요청, CUSTOMER)
 
 ### 7-1. 엔티티 공통
 
-- 모든 엔티티는 `BaseEntity`를 상속하여 감사 필드(`created_at/by`, `updated_at/by`, `deleted_at/by`) 자동 관리
+- 엔티티는 `BaseEntity`를 상속하여 감사 필드(`created_at/by`, `updated_at/by`, `deleted_at/by`) 자동 관리, 단 로그성 테이블은 제외
 - 삭제는 Soft Delete 방식 (`deleted_at` 기록)
 - 숨김(`is_hidden`)과 삭제(`deleted_at`)는 별개 필드
 

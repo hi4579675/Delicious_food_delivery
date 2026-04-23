@@ -46,10 +46,10 @@
   - `클린 아키텍처 스프링 적용`
   - `스프링 계층 구조`
 - 🎯 이해해야 할 핵심:
-  - **의존성 방향**: `presentation → application → domain ← infrastructure`
-  - **domain은 아무것도 몰라야 함** (DB도, 외부 API도)
-  - **infrastructure가 domain의 인터페이스를 구현** (의존성 역전)
-  - 각 계층의 **책임 분리** (컨트롤러는 HTTP, 서비스는 유스케이스, 엔티티는 데이터)
+  - **의존성 방향**: `presentation → application → domain`, `application → infrastructure`
+  - **domain은 웹(HTTP) 계층과 외부 API를 모름** — JPA 어노테이션까지는 허용(현실적 타협)
+  - 기본 조회/저장은 `domain/repository/`의 `JpaRepository` 인터페이스 하나로 충분. **커스텀 쿼리(QueryDSL 등)가 필요할 때만** `infrastructure/persistence/repository/`에 구현체 추가
+  - 각 계층의 **책임 분리** (컨트롤러는 HTTP, 서비스는 트랜잭션/오케스트레이션, 엔티티는 데이터)
 
 #### 2. Package by Feature + 우리 프로젝트 탐색
 **목표**: "왜 `controller/` 최상위가 아니라 `user/` 최상위인지" 이해하고 실제 코드 구조 파악
@@ -91,7 +91,7 @@
 |---------|------|------|
 | REST API 메서드 | `{도메인}/presentation/` | `UserController` |
 | Request DTO (웹 검증용) | `{도메인}/presentation/dto/` | `SignupRequest` |
-| Command/Response DTO (서비스용) | `{도메인}/application/dto/` | `SignupCommand`, `UserInfo` |
+| Response DTO (서비스 반환) | `{도메인}/presentation/dto/` | `UserInfo` |
 | 평소 쓰던 `@Service` | `{도메인}/application/` | `UserService` |
 | `@Entity` | `{도메인}/domain/entity/` | `User.java` |
 | `JpaRepository` 인터페이스 | `{도메인}/domain/repository/` | `UserRepository` |
@@ -149,10 +149,11 @@ public class StoreService {
 
 #### Q3. DTO는 어디에 두지?
 
-- **Request DTO** (웹 검증용): `{도메인}/presentation/dto/` — 컨트롤러가 받는 객체
-- **Command/Response DTO** (서비스용): `{도메인}/application/dto/` — 서비스가 주고받는 객체
-- Controller에서 Request → Command 변환 후 Service에 전달 (Service는 presentation DTO를 모름)
-- 엔티티는 **절대 컨트롤러까지 올라오면 안 됨**. Response DTO로 변환해서 반환.
+**Request / Response 2종류만, 둘 다 `{도메인}/presentation/dto/`에 둡니다.** 중간 Command DTO는 만들지 않습니다.
+
+- **Request DTO**: 컨트롤러 입력 (`@Valid`, `@NotBlank` 등 웹 검증 어노테이션 포함). Service가 그대로 받아도 OK, 필드 적으면 primitive로 받아도 OK
+- **Response DTO**: 서비스가 반환, 컨트롤러가 그대로 내려줌 (`UserInfo.from(user)` 같은 static factory 권장)
+- 엔티티는 **절대 컨트롤러까지 올라오면 안 됨**. 반드시 Response DTO로 변환해서 반환.
 
 #### Q4. 예외는 어디에?
 
@@ -174,8 +175,8 @@ public class StoreService {
   - `Request`/`Response` DTO
 - **하지 말 것**: 비즈니스 로직 넣지 않기 (서비스 호출만)
 
-### `application/` = 서비스 계층 (유스케이스)
-- **역할**: 유스케이스 오케스트레이션
+### `application/` = 서비스 계층 (Application Service)
+- **역할**: 기능 단위 오케스트레이션 — 여러 도메인/Repository 조합, 트랜잭션 경계 정의
 - **쉽게**: 평소 쓰던 `@Service`. "회원가입하기", "주문하기" 같은 기능 하나당 메서드 하나
 - **들어가는 것**:
   - `@Service` + `@Transactional` 붙인 서비스 클래스
@@ -192,39 +193,44 @@ public class StoreService {
   - `entity/`: JPA 엔티티
   - `repository/`: Repository 인터페이스 (JpaRepository 상속)
   - `exception/`: 도메인 전용 예외
-- **규칙**: **Spring Data JPA 외에는 외부 의존성 최소화**
+- **규칙**: JPA 어노테이션/`JpaRepository` 외에는 외부 의존성(웹, 외부 API 등) 두지 않음
 
 ### `infrastructure/` = 외부 연동 계층
-- **역할**: 외부 시스템(DB, API)과 연결
-- **쉽게**: Repository 구현체, 외부 API 클라이언트
+- **역할**: 외부 시스템(커스텀 쿼리, 외부 API 등)과 연결
+- **쉽게**: 커스텀 쿼리 구현체, 외부 API 클라이언트
 - **들어가는 것**:
-  - `persistence/repository/`: Repository 구현체 (JPA 커스텀 쿼리 등)
+  - `persistence/repository/`: JPA 커스텀 쿼리 구현체 (QueryDSL 등이 필요할 때만)
   - `external/`: 외부 API 클라이언트 (`GeminiClient` 등)
   - `jwt/`: JWT 관련 구현 (auth 도메인만)
-- **책임**: `domain/repository/`의 인터페이스를 **구현**
+- **책임**: 기본 CRUD는 Spring Data JPA 프록시가 자동 구현. 커스텀 쿼리가 필요하면 `domain/repository/`의 인터페이스에 맞는 구현체 제공
 
 ---
 
-##  의존성 규칙
+##  의존성 가이드라인
+
+엄격한 규칙이라기보단 **"이런 방향으로 흐르게 하자"** 수준의 지침.
 
 ```
-presentation  →  application  →  domain
-                     ↓              ↑
-                infrastructure ─────┘
+presentation → application → domain
+                    ↓
+              infrastructure (필요 시)
 ```
 
-###  허용되는 방향
-- `presentation` → `application` 호출 OK
-- `application` → `domain`, `infrastructure` 호출 OK
-- `infrastructure` → `domain`의 인터페이스 구현 OK
+### 지키면 좋은 것
 
-###  금지되는 방향
-- `domain` → 다른 계층 의존 ❌
-- `application` → `presentation` 의존 ❌ (거꾸로)
-- `infrastructure` → `application` 의존 ❌
+- **컨트롤러는 얇게**: Service만 호출. 비즈니스 로직 X
+- **엔티티는 밖으로 새 나가지 않게**: 컨트롤러까지 올라오지 말고 Response DTO로 변환
+- **domain은 웹/외부 API를 모름**: JPA 어노테이션은 허용(현실적 타협). HTTP/Controller는 참조 X
+- **크로스 도메인**: 다른 도메인이 필요하면 **그 도메인의 Service를 주입** — 다른 도메인의 Repository/엔티티 직접 접근은 지양
+- **`common/`은 모두가 씀**: BaseEntity, ApiResponse, BaseException 등
 
-###  핵심 규칙
-> **"엔티티는 아무것도 몰라야 한다. 컨트롤러는 서비스만 호출한다. 서비스가 모든 조율을 담당한다."**
+### 실용적으로 허용하는 것 (원칙상 역참조지만 관행)
+
+- **Service가 Request DTO(`presentation/dto/`) 파라미터로 받기** — Spring Layered 관행이라 허용. 대신 Service가 Controller 클래스 자체를 import하는 건 X
+- **infrastructure에서 domain 엔티티/Repository 인터페이스 참조** — 커스텀 쿼리(QueryDSL 등) 구현할 때 자연스러움
+
+### 핵심 한 줄
+> **"컨트롤러는 얇게, 서비스가 조율, 엔티티는 밖으로 안 새 나감."**
 
 ---
 
@@ -287,7 +293,7 @@ user/
 ---
 
 ### 4. `address/` — 배송지 모듈
-사용자의 배송지 CRUD. `user/`와 동일한 5계층 구조.
+사용자의 배송지 CRUD. `user/`와 동일한 4계층 구조.
 
 ---
 
@@ -311,9 +317,9 @@ user/
 ### 8. `order/` — 주문 모듈
 주문 생성, 상태 전이. `user/`와 동일한 구조.
 
-> - 주문 플로우: `주문요청(CUSTOMER)` → `수락` → `조리완료` → `배송수령` → `배송완료+주문완료(OWNER)`
+> - 주문 플로우: `PENDING(CUSTOMER)` → `ACCEPTED` → `COOKING` → `DELIVERING` → `DELIVERED` → `COMPLETED(OWNER)` / `CANCELED`는 `PENDING`·`ACCEPTED`에서만 분기 (상세는 [001](./001-domain-spec.md#5-주문-상태-흐름))
 > - 상태 전이 검증 로직은 `application/` 서비스 안에서 처리
-> - `OrderItem`은 `Order`와 같은 Aggregate (컬렉션 매핑 예외 허용, [005. JPA 가이드](./005-jpa-guidelines.md) 2-3 참고)
+> - `Order`와 `OrderItem`은 생명주기를 공유 → `Order`에서 `OrderItem` 컬렉션 매핑 예외 허용 ([005. JPA 가이드](./005-jpa-guidelines.md) 2-3 참고)
 
 ---
 
