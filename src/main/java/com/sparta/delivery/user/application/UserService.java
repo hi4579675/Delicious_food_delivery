@@ -48,6 +48,15 @@ public class UserService {
 
     }
 
+    /**
+     * userId 로 활성 사용자 조회.
+     * JwtAuthenticationFilter 의 tokenVersion 비교 및 Principal 생성에 사용.
+     * 탈퇴된 유저는 @SQLRestriction 에 의해 UserNotFoundException 으로 올라옴.
+     */
+    public User findById(Long userId) {
+        return findUser(userId);
+    }
+
     /** 내 정보 조회 */
     public UserResponse getMe(Long userId) {
         return UserResponse.from(findUser(userId));
@@ -107,6 +116,11 @@ public class UserService {
         User target = findUser(targetUserId);
         UserRole newRole = request.role();
 
+        //  추가: 본인 권한 변경 자체를 차단 (MASTER self-demotion 방지)
+        if (actor.getUserId().equals(target.getUserId())) {
+            throw new ForbiddenRoleChangeException();
+        }
+
         if (actor.getRole() == UserRole.MANAGER) {
             boolean touchingPrivilegedTarget =
                     target.getRole() == UserRole.MANAGER || target.getRole() == UserRole.MASTER;
@@ -143,4 +157,6 @@ public class UserService {
         return userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
     }
+
+
 }

@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
@@ -72,6 +73,16 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(CommonErrorCode.INTERNAL_SERVER_ERROR));
     }
 
+    /** JSON 파싱 실패 / enum 값 범위 밖 등 — 잘못된 요청 본문 */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMessageNotReadable(
+            HttpMessageNotReadableException e, HttpServletRequest req) {
+        Throwable cause = e.getMostSpecificCause();
+        String causeType = (cause == null ? e : cause).getClass().getSimpleName();
+        log.warn("[InvalidBody] {} - {}", req.getRequestURI(), causeType);
+        return ResponseEntity.status(CommonErrorCode.INVALID_INPUT_VALUE.getStatus())
+                .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT_VALUE));
+    }
 
     /** Validation 필드 에러 상세 (응답 data에 담김) */
     public record FieldErrorDetail(String field, String value, String reason) {
