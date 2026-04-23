@@ -281,7 +281,7 @@ class AddressServiceTest {
                     .willReturn(List.of(latestAddress));
 
             // when
-            addressService.delete(userId, UserRole.CUSTOMER.name(), addressId);
+            addressService.delete(userId, UserRole.CUSTOMER, addressId);
 
             // then
             assertThat(deletedAddress.isDeleted()).isTrue();
@@ -308,7 +308,7 @@ class AddressServiceTest {
             given(addressRepository.findById(addressId)).willReturn(Optional.of(address));
 
             // when // then
-            assertThatThrownBy(() -> addressService.delete(userId, UserRole.CUSTOMER.name(), addressId))
+            assertThatThrownBy(() -> addressService.delete(userId, UserRole.CUSTOMER, addressId))
                     .isInstanceOf(AddressForbiddenException.class);
         }
     }

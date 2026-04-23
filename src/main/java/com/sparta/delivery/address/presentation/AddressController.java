@@ -6,6 +6,7 @@ import com.sparta.delivery.address.presentation.dto.AddressResponse;
 import com.sparta.delivery.address.presentation.dto.AddressUpdateRequest;
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.common.response.ApiResponse;
+import com.sparta.delivery.user.domain.entity.UserRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -92,7 +93,7 @@ public class AddressController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID addressId
     ) {
-        addressService.delete(principal.getId(), principal.getRole(), addressId);
+        addressService.delete(principal.getId(), UserRole.valueOf(principal.getRole()), addressId);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

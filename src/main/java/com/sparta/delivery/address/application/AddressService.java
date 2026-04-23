@@ -66,7 +66,7 @@ public class AddressService {
     }
 
     @Transactional
-    public void delete(Long actorId, String actorRole, UUID addressId) {
+    public void delete(Long actorId, UserRole actorRole, UUID addressId) {
         Address address = getDeletableAddress(actorId, actorRole, addressId);
         Long ownerId = address.getUserId();
         boolean wasDefault = address.isDefault();
@@ -78,8 +78,8 @@ public class AddressService {
         setLatestAddressAsDefault(ownerId, wasDefault);
     }
 
-    private Address getDeletableAddress(Long actorId, String actorRole, UUID addressId) {
-        if (isMaster(actorRole)) {
+    private Address getDeletableAddress(Long actorId, UserRole actorRole, UUID addressId) {
+        if (actorRole == UserRole.MASTER) {
             return addressRepository.findById(addressId)
                     .orElseThrow(AddressNotFoundException::new);
         }
@@ -140,9 +140,5 @@ public class AddressService {
             throw new AddressForbiddenException();
         }
         return address;
-    }
-
-    private static boolean isMaster(String role) {
-        return UserRole.valueOf(role) == UserRole.MASTER;
     }
 }
