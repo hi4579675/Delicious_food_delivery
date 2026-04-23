@@ -77,7 +77,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleMessageNotReadable(
             HttpMessageNotReadableException e, HttpServletRequest req) {
-        log.warn("[InvalidBody] {} - {}", req.getRequestURI(), e.getMostSpecificCause().getMessage());
+        Throwable cause = e.getMostSpecificCause();
+        String causeType = (cause == null ? e : cause).getClass().getSimpleName();
+        log.warn("[InvalidBody] {} - {}", req.getRequestURI(), causeType);
         return ResponseEntity.status(CommonErrorCode.INVALID_INPUT_VALUE.getStatus())
                 .body(ApiResponse.error(CommonErrorCode.INVALID_INPUT_VALUE));
     }
