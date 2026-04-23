@@ -47,6 +47,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/signup")
                         .permitAll()
+                        // 상품 조회
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/products/*",
+                                "/api/v1/stores/*/products"
+                        ).permitAll()
                         // --- 그 외 전부 인증 필요 ---
                         .anyRequest().authenticated()
                 )

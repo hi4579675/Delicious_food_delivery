@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -41,6 +42,47 @@ public class ProductService {
 
         log.info("상품 등록 완료 - actorID={}, storeId={}, productId={}", actorId, storeId, savedProduct.getProductId());
         return ProductResponse.from(savedProduct);
+    }
+
+    public ProductResponse getProduct(Long actorId,  UserRole actorRole, UUID productId) {
+        Product product = getProductOrThrow(productId);
+        // hidden 상품이 아니라면 권한 관계없이 조회 가능
+        if (!product.isHidden())
+            {
+                return ProductResponse.from(product);
+            }
+
+        // hidden 이라면 권한 별 분기 처리
+        Store store = getStoreOrThrow(product.getStoreId());
+
+        boolean canViewHidden =
+                actorRole == UserRole.MANAGER
+                || actorRole == UserRole.MASTER
+                || (actorRole == UserRole.OWNER && store.getUserId().equals(actorId));
+
+        if (!canViewHidden) {
+            throw new ProductNotFoundException();
+        }
+
+        return ProductResponse.from(product);
+    }
+
+    public List<ProductResponse> getProducts(Long actorId, UserRole actorRole, UUID storeId) {
+        Store store = getStoreOrThrow(storeId);
+
+        boolean canViewHidden =
+                actorRole == UserRole.MANAGER
+                || actorRole == UserRole.MASTER
+                || (actorRole == UserRole.OWNER && store.getUserId().equals(actorId));
+
+        List<Product> products =  canViewHidden
+                ? productRepository.findAllByStoreIdOrderByDisplayOrderAsc(storeId)
+                : productRepository.findAllByStoreIdAndIsHiddenFalseOrderByDisplayOrderAsc(storeId);
+
+        return products
+                .stream()
+                .map(ProductResponse::from)
+                .toList();
     }
 
     @Transactional

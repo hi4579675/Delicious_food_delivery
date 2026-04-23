@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -46,6 +47,39 @@ public class ProductController {
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.created(response));
     }
+
+    @Operation(summary = "상품 단건 조회")
+    @GetMapping("/products/{productId}")
+    public ResponseEntity<ApiResponse<ProductResponse>> getProduct(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID productId
+    ) {
+
+        Long actorId = principal == null ? null : principal.getId();
+        UserRole actorRole = principal == null ? null : UserRole.valueOf(principal.getRole());
+        ProductResponse response = productService.getProduct(actorId, actorRole, productId);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "상품 목록 조회")
+    @GetMapping("/stores/{storeId}/products")
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getProducts(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID storeId
+    ) {
+        Long actorId = principal == null ? null : principal.getId();
+        UserRole actorRole = principal == null ? null : UserRole.valueOf(principal.getRole());
+
+        List<ProductResponse> response = productService.getProducts(
+                actorId,
+                actorRole,
+                storeId
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
 
     @Operation(summary = "상품 일반 정보 수정")
     @PreAuthorize("hasAnyRole('OWNER', 'MANAGER', 'MASTER')")
