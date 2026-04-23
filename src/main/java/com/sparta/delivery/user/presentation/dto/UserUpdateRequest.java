@@ -7,8 +7,8 @@ import jakarta.validation.constraints.Size;
 public record UserUpdateRequest(
 
         @NotBlank(message = "이름은 필수입니다.")
-        @Size(min = 4, max = 10, message = "이름은 4자 이상 10자 이하입니다.")
-        @Pattern(regexp = "^[a-z0-9]+$", message = "이름은 알파벳 소문자와 숫자만 가능합니다.")
+        @Size(min = 2, max = 20, message = "이름은 2자 이상 20자 이하입니다.")
+        @Pattern(regexp = "^[가-힣a-zA-Z0-9]+$", message = "이름은 한글, 영문, 숫자만 가능합니다 (공백/특수문자 불가).")
         String name,
 
         @Pattern(
