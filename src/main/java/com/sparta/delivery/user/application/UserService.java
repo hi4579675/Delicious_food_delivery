@@ -116,6 +116,11 @@ public class UserService {
         User target = findUser(targetUserId);
         UserRole newRole = request.role();
 
+        //  추가: 본인 권한 변경 자체를 차단 (MASTER self-demotion 방지)
+        if (actor.getUserId().equals(target.getUserId())) {
+            throw new ForbiddenRoleChangeException();
+        }
+
         if (actor.getRole() == UserRole.MANAGER) {
             boolean touchingPrivilegedTarget =
                     target.getRole() == UserRole.MANAGER || target.getRole() == UserRole.MASTER;
