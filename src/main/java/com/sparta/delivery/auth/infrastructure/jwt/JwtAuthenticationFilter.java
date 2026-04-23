@@ -129,4 +129,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setCharacterEncoding("UTF-8");
         objectMapper.writeValue(response.getWriter(), ApiResponse.error(ec));
     }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/api/v1/auth/")
+                || (path.equals("/api/v1/users/signup") && "POST".equalsIgnoreCase(request.getMethod()))
+                || path.startsWith("/swagger-ui")
+                || path.startsWith("/v3/api-docs")
+                || path.startsWith("/actuator/health")
+                || path.startsWith("/actuator/info");
+    }
+
 }
