@@ -31,9 +31,8 @@ public class StoreCategoryService {
         String normalizedCategoryName = normalize(request.categoryName());
 
         validateDuplicateCategoryName(normalizedCategoryName);
+        Integer nextSortOrder = getNextSortOrder();
         try {
-            Integer nextSortOrder = getNextSortOrder();
-
             StoreCategory category = StoreCategory.create(
                     normalizedCategoryName,
                     request.description(),
@@ -54,7 +53,12 @@ public class StoreCategoryService {
             if (storeCategoryRepository.existsByCategoryNameIncludingDeleted(normalizedCategoryName)) {
                 throw new DuplicateCategoryNameException();
             }
-            throw new DuplicateCategorySortOrderException();
+
+            if (storeCategoryRepository.existsBySortOrderIncludingDeleted(nextSortOrder)) {
+                throw new DuplicateCategorySortOrderException();
+            }
+
+            throw e;
         }
     }
 
