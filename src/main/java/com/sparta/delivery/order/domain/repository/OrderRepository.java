@@ -1,14 +1,25 @@
 package com.sparta.delivery.order.domain.repository;
 
 import com.sparta.delivery.order.domain.entity.Order;
+import com.sparta.delivery.order.domain.entity.OrderStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface OrderRepository extends JpaRepository<Order, UUID> {
 
-    List<Order> findAllByUserIdOrderByCreatedAtDesc(Long userId);
+    Page<Order> findAllByUserId(Long userId, Pageable pageable);
 
-    List<Order> findAllByStoreIdOrderByCreatedAtDesc(UUID storeId);
+    Page<Order> findAllByUserIdAndStoreId(Long userId, UUID storeId, Pageable pageable);
+
+    Page<Order> findAllByUserIdAndStatus(Long userId, OrderStatus status, Pageable pageable);
+
+    Page<Order> findAllByUserIdAndStoreIdAndStatus(
+            Long userId,
+            UUID storeId,
+            OrderStatus status,
+            Pageable pageable
+    );
 }
