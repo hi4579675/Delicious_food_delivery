@@ -4,7 +4,10 @@ import com.sparta.delivery.store.domain.entity.StoreCategory;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.domain.Pageable;
 
 public interface StoreCategoryRepository extends JpaRepository<StoreCategory, UUID> {
 
@@ -14,7 +17,8 @@ public interface StoreCategoryRepository extends JpaRepository<StoreCategory, UU
 
     Optional<StoreCategory> findByCategoryId(UUID categoryId);
 
-    Optional<StoreCategory> findTopByOrderBySortOrderDesc();
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<StoreCategory> findAllByOrderBySortOrderDesc(Pageable pageable);
 
     List<StoreCategory> findAllByOrderBySortOrderAsc();
 

@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,8 +54,9 @@ class StoreCategoryServiceTest {
             StoreCategory lastCategory = createCategory(UUID.randomUUID(), "피자", 3, true);
 
             given(storeCategoryRepository.existsByCategoryName("치킨")).willReturn(false);
-            given(storeCategoryRepository.findTopByOrderBySortOrderDesc()).willReturn(Optional.of(lastCategory));
-            given(storeCategoryRepository.save(any(StoreCategory.class))).willAnswer(invocation -> {
+            given(storeCategoryRepository.findAllByOrderBySortOrderDesc(PageRequest.of(0, 1)))
+                    .willReturn(List.of(lastCategory));
+            given(storeCategoryRepository.saveAndFlush(any(StoreCategory.class))).willAnswer(invocation -> {
                 StoreCategory savedCategory = invocation.getArgument(0);
                 ReflectionTestUtils.setField(savedCategory, "categoryId", categoryId);
                 return savedCategory;
@@ -70,8 +72,8 @@ class StoreCategoryServiceTest {
             assertThat(response.isActive()).isTrue();
 
             then(storeCategoryRepository).should().existsByCategoryName("치킨");
-            then(storeCategoryRepository).should().findTopByOrderBySortOrderDesc();
-            then(storeCategoryRepository).should().save(any(StoreCategory.class));
+            then(storeCategoryRepository).should().findAllByOrderBySortOrderDesc(PageRequest.of(0, 1));
+            then(storeCategoryRepository).should().saveAndFlush(any(StoreCategory.class));
         }
 
         @Test
@@ -86,8 +88,9 @@ class StoreCategoryServiceTest {
             );
 
             given(storeCategoryRepository.existsByCategoryName("치킨")).willReturn(false);
-            given(storeCategoryRepository.findTopByOrderBySortOrderDesc()).willReturn(Optional.empty());
-            given(storeCategoryRepository.save(any(StoreCategory.class))).willAnswer(invocation -> {
+            given(storeCategoryRepository.findAllByOrderBySortOrderDesc(PageRequest.of(0, 1)))
+                    .willReturn(List.of());
+            given(storeCategoryRepository.saveAndFlush(any(StoreCategory.class))).willAnswer(invocation -> {
                 StoreCategory savedCategory = invocation.getArgument(0);
                 ReflectionTestUtils.setField(savedCategory, "categoryId", categoryId);
                 return savedCategory;

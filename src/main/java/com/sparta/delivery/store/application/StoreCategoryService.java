@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,24 +32,12 @@ public class StoreCategoryService {
 
         validateDuplicateCategoryName(normalizedCategoryName);
 
-        Integer nextSortOrder = getNextSortOrder();
-
-        StoreCategory category = StoreCategory.create(
+        return createCategoryWithRetry(
                 normalizedCategoryName,
                 request.description(),
-                nextSortOrder,
-                request.isActive()
+                request.isActive(),
+                0
         );
-
-        StoreCategory savedCategory = storeCategoryRepository.save(category);
-
-        log.info("가게 카테고리 생성 완료 - categoryId={}, categoryName={}, sortOrder={}, 활성여부={}",
-                savedCategory.getCategoryId(),
-                savedCategory.getCategoryName(),
-                savedCategory.getSortOrder(),
-                savedCategory.getIsActive());
-
-        return StoreCategoryResponse.from(savedCategory);
     }
 
     /** 가게 카테고리 목록을 조회한다. */
@@ -75,6 +65,7 @@ public class StoreCategoryService {
         StoreCategory category = getCategoryOrThrow(categoryId);
         String normalizedCategoryName = normalize(request.categoryName());
 
+        acquireSortOrderLock();
         validateDuplicateCategoryName(category, normalizedCategoryName);
         validateDuplicateSortOrder(category, request.sortOrder());
 
@@ -113,9 +104,8 @@ public class StoreCategoryService {
     }
 
     private Integer getNextSortOrder() {
-        return storeCategoryRepository.findTopByOrderBySortOrderDesc()
-                .map(category -> category.getSortOrder() + 1)
-                .orElse(1);
+        StoreCategory lastCategory = getLastCategoryWithLock();
+        return lastCategory == null ? 1 : lastCategory.getSortOrder() + 1;
     }
 
     private void validateDuplicateCategoryName(String categoryName) {
@@ -140,5 +130,54 @@ public class StoreCategoryService {
 
     private String normalize(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private void acquireSortOrderLock() {
+        getLastCategoryWithLock();
+    }
+
+    private StoreCategory getLastCategoryWithLock() {
+        return storeCategoryRepository.findAllByOrderBySortOrderDesc(PageRequest.of(0, 1))
+                .stream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    private StoreCategoryResponse createCategoryWithRetry(
+            String categoryName,
+            String description,
+            Boolean isActive,
+            int retryCount
+    ) {
+        try {
+            Integer nextSortOrder = getNextSortOrder();
+
+            StoreCategory category = StoreCategory.create(
+                    categoryName,
+                    description,
+                    nextSortOrder,
+                    isActive
+            );
+
+            StoreCategory savedCategory = storeCategoryRepository.saveAndFlush(category);
+
+            log.info("가게 카테고리 생성 완료 - categoryId={}, categoryName={}, sortOrder={}, 활성여부={}",
+                    savedCategory.getCategoryId(),
+                    savedCategory.getCategoryName(),
+                    savedCategory.getSortOrder(),
+                    savedCategory.getIsActive());
+
+            return StoreCategoryResponse.from(savedCategory);
+        } catch (DataIntegrityViolationException e) {
+            if (storeCategoryRepository.existsByCategoryName(categoryName)) {
+                throw new DuplicateCategoryNameException();
+            }
+
+            if (retryCount == 0) {
+                return createCategoryWithRetry(categoryName, description, isActive, 1);
+            }
+
+            throw new DuplicateCategorySortOrderException();
+        }
     }
 }
