@@ -53,7 +53,7 @@ class StoreCategoryServiceTest {
 
             StoreCategory lastCategory = createCategory(UUID.randomUUID(), "피자", 3, true);
 
-            given(storeCategoryRepository.existsByCategoryName("치킨")).willReturn(false);
+            given(storeCategoryRepository.existsByCategoryNameIncludingDeleted("치킨")).willReturn(false);
             given(storeCategoryRepository.findAllByOrderBySortOrderDesc(PageRequest.of(0, 1)))
                     .willReturn(List.of(lastCategory));
             given(storeCategoryRepository.saveAndFlush(any(StoreCategory.class))).willAnswer(invocation -> {
@@ -71,7 +71,7 @@ class StoreCategoryServiceTest {
             assertThat(response.sortOrder()).isEqualTo(4);
             assertThat(response.isActive()).isTrue();
 
-            then(storeCategoryRepository).should().existsByCategoryName("치킨");
+            then(storeCategoryRepository).should().existsByCategoryNameIncludingDeleted("치킨");
             then(storeCategoryRepository).should().findAllByOrderBySortOrderDesc(PageRequest.of(0, 1));
             then(storeCategoryRepository).should().saveAndFlush(any(StoreCategory.class));
         }
@@ -87,7 +87,7 @@ class StoreCategoryServiceTest {
                     true
             );
 
-            given(storeCategoryRepository.existsByCategoryName("치킨")).willReturn(false);
+            given(storeCategoryRepository.existsByCategoryNameIncludingDeleted("치킨")).willReturn(false);
             given(storeCategoryRepository.findAllByOrderBySortOrderDesc(PageRequest.of(0, 1)))
                     .willReturn(List.of());
             given(storeCategoryRepository.saveAndFlush(any(StoreCategory.class))).willAnswer(invocation -> {
@@ -113,13 +113,13 @@ class StoreCategoryServiceTest {
                     true
             );
 
-            given(storeCategoryRepository.existsByCategoryName("치킨")).willReturn(true);
+            given(storeCategoryRepository.existsByCategoryNameIncludingDeleted("치킨")).willReturn(true);
 
             // when & then
             assertThatThrownBy(() -> storeCategoryService.createCategory(request))
                     .isInstanceOf(DuplicateCategoryNameException.class);
 
-            then(storeCategoryRepository).should(never()).save(any());
+            then(storeCategoryRepository).should(never()).saveAndFlush(any());
         }
     }
 
@@ -210,8 +210,10 @@ class StoreCategoryServiceTest {
             );
 
             given(storeCategoryRepository.findByCategoryId(categoryId)).willReturn(Optional.of(category));
-            given(storeCategoryRepository.existsByCategoryName("치킨 수정")).willReturn(false);
-            given(storeCategoryRepository.existsBySortOrder(2)).willReturn(false);
+            given(storeCategoryRepository.existsByCategoryNameIncludingDeleted("치킨 수정")).willReturn(false);
+            given(storeCategoryRepository.existsBySortOrderIncludingDeleted(2)).willReturn(false);
+            given(storeCategoryRepository.findAllByOrderBySortOrderDesc(PageRequest.of(0, 1)))
+                    .willReturn(List.of(category));
 
             // when
             var response = storeCategoryService.updateCategory(categoryId, request);
@@ -238,7 +240,9 @@ class StoreCategoryServiceTest {
             );
 
             given(storeCategoryRepository.findByCategoryId(categoryId)).willReturn(Optional.of(category));
-            given(storeCategoryRepository.existsByCategoryName("피자")).willReturn(true);
+            given(storeCategoryRepository.findAllByOrderBySortOrderDesc(PageRequest.of(0, 1)))
+                    .willReturn(List.of(category));
+            given(storeCategoryRepository.existsByCategoryNameIncludingDeleted("피자")).willReturn(true);
 
             // when & then
             assertThatThrownBy(() -> storeCategoryService.updateCategory(categoryId, request))
@@ -260,7 +264,9 @@ class StoreCategoryServiceTest {
             );
 
             given(storeCategoryRepository.findByCategoryId(categoryId)).willReturn(Optional.of(category));
-            given(storeCategoryRepository.existsBySortOrder(2)).willReturn(true);
+            given(storeCategoryRepository.findAllByOrderBySortOrderDesc(PageRequest.of(0, 1)))
+                    .willReturn(List.of(category));
+            given(storeCategoryRepository.existsBySortOrderIncludingDeleted(2)).willReturn(true);
 
             // when & then
             assertThatThrownBy(() -> storeCategoryService.updateCategory(categoryId, request))

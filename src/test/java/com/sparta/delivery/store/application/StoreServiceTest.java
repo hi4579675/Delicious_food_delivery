@@ -278,7 +278,7 @@ class StoreServiceTest {
             given(storeRepository.findAll()).willReturn(List.of(store));
 
             // when
-            var responses = storeService.getStores(null, null);
+            var responses = storeService.getStores(null, null, null);
 
             // then
             assertThat(responses).hasSize(1);
@@ -297,7 +297,7 @@ class StoreServiceTest {
             given(storeRepository.findByRegionId(regionId)).willReturn(List.of(store));
 
             // when
-            var responses = storeService.getStores(regionId, null);
+            var responses = storeService.getStores(regionId, null, null);
 
             // then
             assertThat(responses).hasSize(1);
@@ -314,7 +314,7 @@ class StoreServiceTest {
             given(storeRepository.findByCategoryId(categoryId)).willReturn(List.of(store));
 
             // when
-            var responses = storeService.getStores(null, categoryId);
+            var responses = storeService.getStores(null, categoryId, null);
 
             // then
             assertThat(responses).hasSize(1);
@@ -333,11 +333,28 @@ class StoreServiceTest {
                     .willReturn(List.of(store));
 
             // when
-            var responses = storeService.getStores(regionId, categoryId);
+            var responses = storeService.getStores(regionId, categoryId, null);
 
             // then
             assertThat(responses).hasSize(1);
             then(storeRepository).should().findByRegionIdAndCategoryId(regionId, categoryId);
+        }
+
+        @Test
+        @DisplayName("사용자 조건으로 가게 목록을 조회한다")
+        void getStores_success_byUserId() {
+            // given
+            Long userId = 1L;
+            Store store = createStoreEntity(UUID.randomUUID(), UUID.randomUUID(), userId);
+
+            given(storeRepository.findByUserId(userId)).willReturn(List.of(store));
+
+            // when
+            var responses = storeService.getStores(null, null, userId);
+
+            // then
+            assertThat(responses).hasSize(1);
+            then(storeRepository).should().findByUserId(userId);
         }
     }
 

@@ -51,9 +51,10 @@ public class StoreController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<StoreResponse>>> getStores(
             @RequestParam(required = false) UUID regionId,
-            @RequestParam(required = false) UUID categoryId
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) Long userId
     ) {
-        return ResponseEntity.ok(ApiResponse.success(storeService.getStores(regionId, categoryId)));
+        return ResponseEntity.ok(ApiResponse.success(storeService.getStores(regionId, categoryId, userId)));
     }
 
     @Operation(summary = "가게 단건 조회")

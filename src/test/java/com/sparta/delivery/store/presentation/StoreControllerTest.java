@@ -193,7 +193,7 @@ class StoreControllerTest {
                     0
             );
 
-            given(storeService.getStores(null, null)).willReturn(List.of(response));
+            given(storeService.getStores(null, null, null)).willReturn(List.of(response));
 
             // when & then
             mockMvc.perform(get("/api/v1/stores")
@@ -202,7 +202,7 @@ class StoreControllerTest {
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data[0].storeName").value("왕조치킨"));
 
-            then(storeService).should().getStores(null, null);
+            then(storeService).should().getStores(null, null, null);
         }
 
         @Test
@@ -212,7 +212,7 @@ class StoreControllerTest {
             UUID regionId = UUID.randomUUID();
             UUID categoryId = UUID.randomUUID();
 
-            given(storeService.getStores(regionId, categoryId)).willReturn(List.of());
+            given(storeService.getStores(regionId, categoryId, null)).willReturn(List.of());
 
             // when & then
             mockMvc.perform(get("/api/v1/stores")
@@ -222,7 +222,42 @@ class StoreControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true));
 
-            then(storeService).should().getStores(regionId, categoryId);
+            then(storeService).should().getStores(regionId, categoryId, null);
+        }
+
+        @Test
+        @DisplayName("사용자 조건으로 가게 목록을 조회한다")
+        void getStores_success_withUserId() throws Exception {
+            // given
+            Long userId = 1L;
+            StoreResponse response = new StoreResponse(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    userId,
+                    "왕조치킨",
+                    "설명",
+                    "주소",
+                    "상세주소",
+                    "02-1234-5678",
+                    15000,
+                    true,
+                    true,
+                    BigDecimal.ZERO,
+                    0
+            );
+
+            given(storeService.getStores(null, null, userId)).willReturn(List.of(response));
+
+            // when & then
+            mockMvc.perform(get("/api/v1/stores")
+                            .with(authentication(customerAuthentication()))
+                            .param("userId", userId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data[0].userId").value(userId));
+
+            then(storeService).should().getStores(null, null, userId);
         }
 
         @Test

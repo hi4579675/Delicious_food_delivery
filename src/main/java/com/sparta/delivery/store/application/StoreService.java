@@ -70,10 +70,12 @@ public class StoreService {
     }
 
     /** 조건에 따라 가게 목록을 조회한다. */
-    public List<StoreResponse> getStores(UUID regionId, UUID categoryId) {
+    public List<StoreResponse> getStores(UUID regionId, UUID categoryId, Long userId) {
         List<Store> stores;
 
-        if (regionId != null && categoryId != null) {
+        if (userId != null) {
+            stores = storeRepository.findByUserId(userId);
+        } else if (regionId != null && categoryId != null) {
             stores = storeRepository.findByRegionIdAndCategoryId(regionId, categoryId);
         } else if (regionId != null) {
             stores = storeRepository.findByRegionId(regionId);

@@ -31,13 +31,31 @@ public class StoreCategoryService {
         String normalizedCategoryName = normalize(request.categoryName());
 
         validateDuplicateCategoryName(normalizedCategoryName);
+        try {
+            Integer nextSortOrder = getNextSortOrder();
 
-        return createCategoryWithRetry(
-                normalizedCategoryName,
-                request.description(),
-                request.isActive(),
-                0
-        );
+            StoreCategory category = StoreCategory.create(
+                    normalizedCategoryName,
+                    request.description(),
+                    nextSortOrder,
+                    request.isActive()
+            );
+
+            StoreCategory savedCategory = storeCategoryRepository.saveAndFlush(category);
+
+            log.info("가게 카테고리 생성 완료 - categoryId={}, categoryName={}, sortOrder={}, 활성여부={}",
+                    savedCategory.getCategoryId(),
+                    savedCategory.getCategoryName(),
+                    savedCategory.getSortOrder(),
+                    savedCategory.getIsActive());
+
+            return StoreCategoryResponse.from(savedCategory);
+        } catch (DataIntegrityViolationException e) {
+            if (storeCategoryRepository.existsByCategoryNameIncludingDeleted(normalizedCategoryName)) {
+                throw new DuplicateCategoryNameException();
+            }
+            throw new DuplicateCategorySortOrderException();
+        }
     }
 
     /** 가게 카테고리 목록을 조회한다. */
@@ -109,21 +127,21 @@ public class StoreCategoryService {
     }
 
     private void validateDuplicateCategoryName(String categoryName) {
-        if (storeCategoryRepository.existsByCategoryName(categoryName)) {
+        if (storeCategoryRepository.existsByCategoryNameIncludingDeleted(categoryName)) {
             throw new DuplicateCategoryNameException();
         }
     }
 
     private void validateDuplicateCategoryName(StoreCategory category, String categoryName) {
         if (!category.getCategoryName().equals(categoryName)
-                && storeCategoryRepository.existsByCategoryName(categoryName)) {
+                && storeCategoryRepository.existsByCategoryNameIncludingDeleted(categoryName)) {
             throw new DuplicateCategoryNameException();
         }
     }
 
     private void validateDuplicateSortOrder(StoreCategory category, Integer sortOrder) {
         if (!category.getSortOrder().equals(sortOrder)
-                && storeCategoryRepository.existsBySortOrder(sortOrder)) {
+                && storeCategoryRepository.existsBySortOrderIncludingDeleted(sortOrder)) {
             throw new DuplicateCategorySortOrderException();
         }
     }
@@ -141,43 +159,5 @@ public class StoreCategoryService {
                 .stream()
                 .findFirst()
                 .orElse(null);
-    }
-
-    private StoreCategoryResponse createCategoryWithRetry(
-            String categoryName,
-            String description,
-            Boolean isActive,
-            int retryCount
-    ) {
-        try {
-            Integer nextSortOrder = getNextSortOrder();
-
-            StoreCategory category = StoreCategory.create(
-                    categoryName,
-                    description,
-                    nextSortOrder,
-                    isActive
-            );
-
-            StoreCategory savedCategory = storeCategoryRepository.saveAndFlush(category);
-
-            log.info("가게 카테고리 생성 완료 - categoryId={}, categoryName={}, sortOrder={}, 활성여부={}",
-                    savedCategory.getCategoryId(),
-                    savedCategory.getCategoryName(),
-                    savedCategory.getSortOrder(),
-                    savedCategory.getIsActive());
-
-            return StoreCategoryResponse.from(savedCategory);
-        } catch (DataIntegrityViolationException e) {
-            if (storeCategoryRepository.existsByCategoryName(categoryName)) {
-                throw new DuplicateCategoryNameException();
-            }
-
-            if (retryCount == 0) {
-                return createCategoryWithRetry(categoryName, description, isActive, 1);
-            }
-
-            throw new DuplicateCategorySortOrderException();
-        }
     }
 }
