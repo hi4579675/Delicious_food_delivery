@@ -1,74 +1,87 @@
 # 설계 문서 인덱스
 
-> 이 폴더는 배달 플랫폼 프로젝트의 **모든 설계 문서**를 모아둔 곳입니다.
-> 번호순으로 읽으면 프로젝트 전체를 이해할 수 있도록 구성했습니다.
+> 이 폴더는 배달 플랫폼 프로젝트의 **모든 설계·운영 문서**를 모아둔 곳입니다.
+> 주제별 폴더 구조로 정리되어 있고, 각 폴더 안에 카테고리 인덱스가 별도로 있습니다.
 
 ---
 
 ## 빠르게 찾기
 
-| 상황                   | 읽을 문서 |
-|----------------------|----------|
-| 처음 봐요                | [000 → 001 → 004](#문서-구성) 순서로 읽기 |
-| **"DTO 어디 두지? Command는?"** 자주 묻는 것 | **[009. 팀 FAQ](./009-conventions-faq.md)** |
-| "이 기능이 뭔지" 알고 싶어요    | [001. 도메인 명세](./001-domain-spec.md) |
-| ERD나 DB 구조가 궁금해요     | [002. 데이터 명세](./002-data-spec.md) |
-| "어디에 어떤 코드 놓지?" 헷갈려요 | [004. 아키텍처 가이드](./004-architecture.md) |
-| 엔티티 만들 때 규칙 확인       | [005. JPA 엔티티 설계 가이드](./005-jpa-guidelines.md) |
-| 공통 응답/예외/BaseEntity 사용법 | [007. 공통 기반 가이드](./007-common-foundation-guide.md) |
-| 예외 클래스 설계 근거         | [008. 예외 처리 전략](./008-exception-strategy.md) |
-| PR/커밋/브랜치 규칙         | [006. 팀 협업 컨벤션](./006-conventions.md) |
-| 배포/환경변수              | [003. 인프라 명세](./003-infrastructure.md) |
+| 상황 | 읽을 문서 |
+|---|---|
+| 처음 봐요 | [프로젝트 개요](./overview.md) → [도메인 명세](./design/domain.md) → [패키지·계층 구조](./architecture/package-structure.md) |
+| **"DTO 어디 두지? Command는?"** 자주 묻는 것 | **[팀 FAQ](./conventions/faq.md)** |
+| 도메인/권한/주문 상태 | [도메인 명세](./design/domain.md) |
+| ERD, 테이블 규약 | [데이터 명세](./design/data.md) |
+| "어디에 어떤 코드 놓지?" | [패키지·계층 구조 가이드](./architecture/package-structure.md) |
+| 엔티티 만들 때 규칙 | [JPA 엔티티 설계 가이드](./architecture/jpa.md) |
+| BaseEntity / ApiResponse / 예외 사용법 | [공통 기반 사용 가이드](./architecture/common-foundation.md) |
+| 예외 클래스 설계 근거 | [예외 처리 전략](./conventions/exception.md) |
+| EC2/네트워크/보안그룹 | [인프라 명세](./operations/infrastructure.md) |
+| CI/CD / Dockerfile / 롤백 | [배포 파이프라인](./operations/deployment.md) |
+| PR/커밋/브랜치 규칙 | [팀 협업 컨벤션](./conventions/team.md) |
 
 ---
 
-## 문서 구성
+## 문서 구조
 
-| 번호 | 문서 | 한 줄 요약 |
-|:---:|------|-----------|
-| 000 | [프로젝트 개요](./000-overview.md) | 주제, 범위, 정책, 핵심 규약 한눈에 |
-| 001 | [도메인 명세](./001-domain-spec.md) | 11개 도메인, 권한 체계, 주문 상태 흐름 |
-| 002 | [데이터 명세](./002-data-spec.md) | ERD 링크, 테이블 목록, 데이터 규약 |
-| 003 | [인프라 명세](./003-infrastructure.md) | 배포 아키텍처, 기술 스택, 환경 Profile, 보안 |
-| 004 | [아키텍처 가이드](./004-architecture.md) | 패키지 구조, 계층별 역할, 코드 배치 규칙 |
-| 005 | [JPA 엔티티 설계 가이드](./005-jpa-guidelines.md) | 연관관계 매핑, 순환참조/영속성 규칙 |
-| 006 | [팀 협업 컨벤션](./006-conventions.md) | 브랜치, 커밋, PR, 이슈 규칙 |
-| 007 | [공통 기반 사용 가이드](./007-common-foundation-guide.md) | BaseEntity, ApiResponse, 예외 던지는 법, 컨트롤러 응답 |
-| 008 | [예외 처리 전략](./008-exception-strategy.md) | ErrorCode / 개별 예외 클래스 설계 근거 |
-| 009 | [팀 FAQ](./009-conventions-faq.md) | 자주 헷갈리는 것 (DTO/Command/Repository/의존성 등) |
+```
+docs/
+├── overview.md              # 프로젝트 개요
+├── design/                  # 📐 설계 (What)
+├── architecture/            # 🏛 코드 구조 (How to code)
+├── operations/              # ⚙️ 운영·배포 (How to deploy)
+├── conventions/             # 📋 팀 규칙
+├── adr/                     # 의사결정 기록
+└── troubleshooting/         # 이슈 해결 기록
+```
+
+### 📐 design/ — 설계 (What / Why)
+서비스가 **무엇을** 하는지, **어떤 데이터**를 다루는지.
+
+- [도메인 명세](./design/domain.md)
+- [데이터 명세](./design/data.md)
+
+### 🏛 architecture/ — 코드 구조 (How to code)
+**어떻게 코드로 표현할지** — 패키지·계층·공통 모듈.
+
+- [패키지·계층 구조 가이드](./architecture/package-structure.md)
+- [JPA 엔티티 설계 가이드](./architecture/jpa.md)
+- [공통 기반 사용 가이드](./architecture/common-foundation.md)
+
+### ⚙️ operations/ — 운영·배포 (How to deploy/run)
+**어디에 어떻게 올라가고, 어떻게 배포되는지**.
+
+- [인프라 명세](./operations/infrastructure.md)
+- [배포 파이프라인](./operations/deployment.md)
+
+### 📋 conventions/ — 협업 규칙
+팀이 함께 지키는 규칙, 자주 묻는 Q&A.
+
+- [팀 협업 컨벤션](./conventions/team.md)
+- [예외 처리 전략](./conventions/exception.md)
+- [팀 FAQ](./conventions/faq.md)
+
+### 📚 누적 기록
+
+- [`adr/`](./adr/) — 의사결정 기록 (Architecture Decision Records)
+- [`troubleshooting/`](./troubleshooting/) — 이슈 해결 기록
 
 ---
 
-## 문서 성격 분류
+## ⚠️ 용어 주의 — `infrastructure`는 두 가지 의미
 
-### 설계 문서 (What / Why)
-프로젝트가 **무엇을**, **왜** 만들고 있는지에 대한 문서.
+| 위치 | 의미 |
+|---|---|
+| `architecture/` 문서 내 `infrastructure/` | **코드 계층 이름** (커스텀 쿼리 구현체, 외부 API 클라이언트 위치) |
+| `operations/infrastructure.md` | **배포 환경** (EC2, Docker, 네트워크) |
 
-- `000-overview.md` — 프로젝트 정의
-- `001-domain-spec.md` — 도메인 규칙
-- `002-data-spec.md` — 데이터 모델
-- `003-infrastructure.md` — 배포/인프라
-
-### 구현 가이드 (How)
-**어떻게 코드로 표현할지**에 대한 문서.
-
-- `004-architecture.md` — 패키지/계층 구조
-- `005-jpa-guidelines.md` — JPA 엔티티 규칙
-- `007-common-foundation-guide.md` — 공통 기반 사용법 (BaseEntity, ApiResponse, 예외)
-- `008-exception-strategy.md` — 예외 처리 전략
-- `009-conventions-faq.md` — 팀 FAQ (자주 묻는 것)
-
-### 협업 규칙
-- `006-conventions.md` — 브랜치/커밋/PR/이슈
+이름만 같고 완전히 다른 개념입니다.
 
 ---
 
 ## 업데이트 규칙
 
-- 모든 설계 변경은 **이 문서에도 반영**되어야 합니다.
-- 문서 변경은 PR 설명에 링크 포함 (`docs/001-domain-spec.md#3-권한별-접근-범위`).
-- 새 문서 추가 시 이 README에 한 줄 요약 추가.
-
-### 누적 기록 (Why / What happened)
-- `adr/` — 의사결정 기록
-- `troubleshooting/` — 이슈 해결 기록
+- 모든 설계 변경은 **해당 문서에 반영**
+- 문서 변경은 PR 설명에 링크 포함 (예: `docs/design/domain.md#3-권한별-접근-범위`)
+- 새 문서 추가 시 **해당 폴더 README + 이 인덱스**에 한 줄 요약 추가

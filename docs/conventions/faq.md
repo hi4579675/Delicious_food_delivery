@@ -1,4 +1,4 @@
-# 009. 팀 FAQ — 자주 헷갈리는 것
+# 팀 FAQ — 자주 헷갈리는 것
 
 > **이 문서를 보면**: 팀원이 반복해서 묻는 컨벤션을 한 번에 확인 가능.
 >
@@ -138,7 +138,7 @@ throw new UserNotFoundException();
 throw new UserException(UserErrorCode.USER_NOT_FOUND);
 ```
 
-자세한 근거: [008. 예외 처리 전략](./008-exception-strategy.md)
+자세한 근거: [예외 처리 전략](./exception.md)
 
 ### Q. 공통 예외(인증/인가/404 등)도 도메인마다 만들어야 하나요?
 
@@ -181,13 +181,13 @@ return ResponseEntity.status(HttpStatus.CREATED)
 
 ### Q. 커밋 메시지 타입은?
 
-`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style` 등. 자세한 표는 [006. 팀 협업 컨벤션](./006-conventions.md#commit-type).
+`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style` 등. 자세한 표는 [팀 협업 컨벤션](./team.md#commit-type).
 
 ---
 
 ## 관련 문서
 
-- [004. 아키텍처 가이드](./004-architecture.md) — 계층 구조 / 의존성 가이드라인 상세
-- [005. JPA 엔티티 설계 가이드](./005-jpa-guidelines.md) — 엔티티/Soft Delete 상세
-- [007. 공통 기반 사용 가이드](./007-common-foundation-guide.md) — 예외/응답 포맷 상세
-- [008. 예외 처리 전략](./008-exception-strategy.md) — 예외 클래스 설계 근거
+- [패키지·계층 구조 가이드](../architecture/package-structure.md) — 계층 구조 / 의존성 가이드라인 상세
+- [JPA 엔티티 설계 가이드](../architecture/jpa.md) — 엔티티/Soft Delete 상세
+- [공통 기반 사용 가이드](../architecture/common-foundation.md) — 예외/응답 포맷 상세
+- [예외 처리 전략](./exception.md) — 예외 클래스 설계 근거

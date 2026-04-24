@@ -1,4 +1,4 @@
-# 000. 프로젝트 개요
+# 프로젝트 개요
 
 > **이 문서를 보면**: 프로젝트가 뭘 만드는지, 어떤 기술을 쓰는지, 핵심 규약이 뭔지 파악 가능.
 
@@ -51,7 +51,7 @@
 | CI/CD | GitHub Actions |
 | 서버 | AWS EC2 t2.micro (Ubuntu 22.04) |
 
-> 상세 버전/설정: [003. 인프라 명세](./003-infrastructure.md)
+> 상세 버전/설정: [인프라 명세](./operations/infrastructure.md)
 
 ---
 
@@ -85,6 +85,6 @@
 
 ## 다음 읽기
 
-- 권한/도메인 규칙 → [001. 도메인 명세](./001-domain-spec.md)
-- ERD / 테이블 상세 → [002. 데이터 명세](./002-data-spec.md)
-- 배포 / 환경변수 → [003. 인프라 명세](./003-infrastructure.md)
+- 권한/도메인 규칙 → [도메인 명세](./design/domain.md)
+- ERD / 테이블 상세 → [데이터 명세](./design/data.md)
+- 배포 / 환경변수 → [인프라 명세](./operations/infrastructure.md)
