@@ -3,6 +3,8 @@ package com.sparta.delivery.product.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -17,6 +19,7 @@ import com.sparta.delivery.product.presentation.dto.request.ProductCreateRequest
 import com.sparta.delivery.product.presentation.dto.request.ProductHiddenUpdateRequest;
 import com.sparta.delivery.product.presentation.dto.request.ProductSoldOutUpdateRequest;
 import com.sparta.delivery.product.presentation.dto.request.ProductUpdateRequest;
+import com.sparta.delivery.product.presentation.dto.response.ProductResponse;
 import com.sparta.delivery.store.domain.entity.Store;
 import com.sparta.delivery.store.domain.repository.StoreRepository;
 import com.sparta.delivery.user.domain.entity.UserRole;
@@ -31,6 +34,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,11 +53,11 @@ class ProductServiceTest {
     private ProductService productService;
 
     @Nested
-    @DisplayName("상품 생성")
+    @DisplayName("Create product")
     class Create {
 
         @Test
-        @DisplayName("OWNER가 본인 가게에 상품을 생성한다")
+        @DisplayName("creates a product for owned store")
         void create_success_owner() {
             // given
             Long ownerId = 1L;
@@ -77,7 +84,7 @@ class ProductServiceTest {
         }
 
         @Test
-        @DisplayName("권한이 없으면 상품을 생성할 수 없다")
+        @DisplayName("fails when actor has no permission")
         void create_fail_forbidden() {
             // given
             Long actorId = 2L;
@@ -94,7 +101,7 @@ class ProductServiceTest {
         }
 
         @Test
-        @DisplayName("같은 가게에 동일한 상품명이 있으면 생성할 수 없다")
+        @DisplayName("fails when product name is duplicated in store")
         void create_fail_duplicateName() {
             // given
             Long ownerId = 1L;
@@ -113,11 +120,11 @@ class ProductServiceTest {
     }
 
     @Nested
-    @DisplayName("상품 조회")
+    @DisplayName("Read product")
     class Read {
 
         @Test
-        @DisplayName("숨김 상품이 아니면 비로그인 사용자도 단건 조회할 수 있다")
+        @DisplayName("reads visible product for anonymous user")
         void getProduct_success_anonymous_whenVisible() {
             // given
             UUID productId = UUID.randomUUID();
@@ -135,7 +142,7 @@ class ProductServiceTest {
         }
 
         @Test
-        @DisplayName("비로그인 사용자는 숨김 상품을 단건 조회할 수 없다")
+        @DisplayName("fails to read hidden product for anonymous user")
         void getProduct_fail_anonymous_whenHidden() {
             // given
             UUID productId = UUID.randomUUID();
@@ -152,7 +159,7 @@ class ProductServiceTest {
         }
 
         @Test
-        @DisplayName("OWNER는 본인 가게의 숨김 상품을 단건 조회할 수 있다")
+        @DisplayName("reads hidden product for store owner")
         void getProduct_success_owner_whenHiddenAndOwned() {
             // given
             Long ownerId = 1L;
@@ -173,27 +180,27 @@ class ProductServiceTest {
         }
 
         @Test
-        @DisplayName("비로그인 사용자는 목록 조회 시 숨김 상품을 제외한다")
+        @DisplayName("excludes hidden products for anonymous list read")
         void getProducts_success_anonymous_excludesHidden() {
             // given
             UUID storeId = UUID.randomUUID();
             Product visibleProduct = createProduct(UUID.randomUUID(), storeId, "Americano");
 
             given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
-            given(productRepository.findAllByStoreIdAndIsHiddenFalseOrderByDisplayOrderAsc(storeId))
-                    .willReturn(List.of(visibleProduct));
+            given(productRepository.findByStoreIdAndIsHiddenFalse(eq(storeId), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(visibleProduct)));
 
             // when
-            var responses = productService.getProducts(null, null, storeId);
+            Page<ProductResponse> responses = productService.getProducts(null, null, storeId, 0, 10, null);
 
             // then
-            assertThat(responses).hasSize(1);
-            assertThat(responses.get(0).productName()).isEqualTo("Americano");
-            then(productRepository).should(never()).findAllByStoreIdOrderByDisplayOrderAsc(storeId);
+            assertThat(responses.getContent()).hasSize(1);
+            assertThat(responses.getContent().get(0).productName()).isEqualTo("Americano");
+            then(productRepository).should(never()).findByStoreId(eq(storeId), any(Pageable.class));
         }
 
         @Test
-        @DisplayName("MANAGER는 목록 조회 시 숨김 상품을 포함한다")
+        @DisplayName("includes hidden products for manager list read")
         void getProducts_success_manager_includesHidden() {
             // given
             UUID storeId = UUID.randomUUID();
@@ -201,24 +208,46 @@ class ProductServiceTest {
             hiddenProduct.changeHidden(true);
 
             given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
-            given(productRepository.findAllByStoreIdOrderByDisplayOrderAsc(storeId)).willReturn(List.of(hiddenProduct));
+            given(productRepository.findByStoreId(eq(storeId), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(hiddenProduct)));
 
             // when
-            var responses = productService.getProducts(99L, UserRole.MANAGER, storeId);
+            Page<ProductResponse> responses = productService.getProducts(99L, UserRole.MANAGER, storeId, 0, 10, null);
 
             // then
-            assertThat(responses).hasSize(1);
-            assertThat(responses.get(0).isHidden()).isTrue();
-            then(productRepository).should(never()).findAllByStoreIdAndIsHiddenFalseOrderByDisplayOrderAsc(storeId);
+            assertThat(responses.getContent()).hasSize(1);
+            assertThat(responses.getContent().get(0).isHidden()).isTrue();
+            then(productRepository).should(never()).findByStoreIdAndIsHiddenFalse(eq(storeId), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("normalizes invalid page size and applies default sort")
+        void getProducts_normalizesPageable() {
+            // given
+            UUID storeId = UUID.randomUUID();
+
+            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(productRepository.findByStoreId(eq(storeId), any(Pageable.class)))
+                    .willReturn(Page.empty());
+
+            // when
+            productService.getProducts(99L, UserRole.MANAGER, storeId, 0, 999, null);
+
+            // then
+            then(productRepository).should().findByStoreId(eq(storeId), argThat(pageable ->
+                    pageable.getPageNumber() == 0
+                            && pageable.getPageSize() == 10
+                            && pageable.getSort().equals(Sort.by(Sort.Direction.DESC, "createdAt"))
+            ));
         }
     }
 
     @Nested
-    @DisplayName("상품 수정")
+    @DisplayName("Update product")
     class Update {
 
         @Test
-        @DisplayName("상품 일반 정보를 수정한다")
+        @DisplayName("updates product info")
         void update_success() {
             // given
             Long ownerId = 1L;
@@ -241,7 +270,7 @@ class ProductServiceTest {
         }
 
         @Test
-        @DisplayName("상품명 변경 시 중복되면 수정할 수 없다")
+        @DisplayName("fails update when changed name is duplicated")
         void update_fail_duplicateName_whenNameChanged() {
             // given
             Long ownerId = 1L;
@@ -261,11 +290,11 @@ class ProductServiceTest {
     }
 
     @Nested
-    @DisplayName("상품 상태 변경 및 삭제")
+    @DisplayName("Product status and delete")
     class StatusAndDelete {
 
         @Test
-        @DisplayName("상품 숨김 상태를 변경한다")
+        @DisplayName("changes hidden status")
         void changeHidden_success() {
             // given
             Long ownerId = 1L;
@@ -284,7 +313,7 @@ class ProductServiceTest {
         }
 
         @Test
-        @DisplayName("상품 품절 상태를 변경한다")
+        @DisplayName("changes sold-out status")
         void changeSoldOut_success() {
             // given
             Long ownerId = 1L;
@@ -303,7 +332,7 @@ class ProductServiceTest {
         }
 
         @Test
-        @DisplayName("상품을 soft delete 처리한다")
+        @DisplayName("soft deletes product")
         void delete_success() {
             // given
             Long ownerId = 1L;

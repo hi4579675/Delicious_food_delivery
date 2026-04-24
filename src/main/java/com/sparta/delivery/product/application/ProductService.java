@@ -16,6 +16,10 @@ import com.sparta.delivery.store.domain.repository.StoreRepository;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,7 +73,13 @@ public class ProductService {
         return ProductResponse.from(product);
     }
 
-    public List<ProductResponse> getProducts(Long actorId, UserRole actorRole, UUID storeId) {
+    public Page<ProductResponse> getProducts(
+            Long actorId,
+            UserRole actorRole,
+            UUID storeId,
+            int page,
+            int size,
+            String sort) {
         Store store = getStoreOrThrow(storeId);
 
         boolean canViewHidden =
@@ -77,15 +87,19 @@ public class ProductService {
                 || actorRole == UserRole.MASTER
                 || (actorRole == UserRole.OWNER && store.getUserId().equals(actorId));
 
-        List<Product> products =  canViewHidden
-                ? productRepository.findAllByStoreIdOrderByDisplayOrderAsc(storeId)
-                : productRepository.findAllByStoreIdAndIsHiddenFalseOrderByDisplayOrderAsc(storeId);
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                normalizePageSize(size),
+                normalizeSort(sort)
+        );
 
-        return products
-                .stream()
-                .map(ProductResponse::from)
-                .toList();
+        Page<Product> products =  canViewHidden
+                ? productRepository.findByStoreId(storeId, pageable)
+                : productRepository.findByStoreIdAndIsHiddenFalse(storeId, pageable);
+
+        return products.map(ProductResponse::from);
     }
+
 
     @Transactional
     public ProductResponse update(Long actorId, UserRole actorRole, UUID productId, ProductUpdateRequest request) {
@@ -194,4 +208,32 @@ public class ProductService {
                 request.displayOrder()
         );
     }
+
+    private int normalizePageSize(int size) {
+        return (size == 10 || size == 30 || size == 50) ? size : 10;
+    }
+    private Sort normalizeSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return Sort.by(Sort.Direction.DESC, "createdAt");
+        }
+
+        String[] parts = sort.split(",");
+        String property = parts[0].trim();
+        String direction = parts.length > 1 ? parts[1].trim().toLowerCase() : "desc";
+
+        if (!property.equals("createdAt")
+                && !property.equals("price")
+                && !property.equals("displayOrder")
+                && !property.equals("productName")
+        ) {
+            return Sort.by(Sort.Direction.DESC, "createdAt");
+        }
+
+        Sort.Direction sortDirection = direction.equals("asc")
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        return Sort.by(sortDirection, property);
+    }
+
 }
