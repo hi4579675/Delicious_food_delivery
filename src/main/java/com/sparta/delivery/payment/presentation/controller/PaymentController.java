@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.common.response.ApiResponse;
+import com.sparta.delivery.payment.application.service.PaymentService;
 import com.sparta.delivery.payment.presentation.dto.PaymentCreateRequest;
 import com.sparta.delivery.payment.presentation.dto.PaymentResponse;
 import com.sparta.delivery.user.domain.entity.UserRole;
@@ -50,20 +51,20 @@ public class PaymentController {
 
     @Operation(summary = "결제 단건 조회")
     @GetMapping("/payments/{paymentId}")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'MANAGER', 'MASTER')")
     public ResponseEntity<ApiResponse<PaymentResponse>> getByPaymentId(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID paymentId
     ) {
-        Long actorId = principal == null ? null : principal.getId();
-        UserRole actorRole = principal == null ? null : UserRole.valueOf(principal.getRole());
-
+        UserRole actorRole = UserRole.valueOf(principal.getRole());
         return ResponseEntity.ok(ApiResponse.success(
-                paymentService.getByPaymentId(actorId, actorRole, paymentId)
+                paymentService.getByPaymentId(principal.getId(), actorRole, paymentId)
         ));
     }
 
     @Operation(summary = "결제 전체 조회")
     @GetMapping("/payments")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'MANAGER', 'MASTER')")
     public ResponseEntity<ApiResponse<List<PaymentResponse>>> getPayments(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "0") int page,
@@ -72,13 +73,11 @@ public class PaymentController {
             @RequestParam(defaultValue = "desc") String direction
 
     ) {
-        Long actorId = principal == null ? null : principal.getId();
-        UserRole actorRole = principal == null ? null : UserRole.valueOf(principal.getRole());
-
         int normalizedSize = (size == 10 || size == 30 || size == 50) ? size : 10;
+        UserRole actorRole = UserRole.valueOf(principal.getRole());
 
         return ResponseEntity.ok(ApiResponse.success(
-                paymentService.getPayments(actorId, actorRole, page, normalizedSize, sortBy, direction)
+                paymentService.getPayments(principal.getId(), actorRole, page, normalizedSize, sortBy, direction)
         ));
     }
 
