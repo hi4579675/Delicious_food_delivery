@@ -1,4 +1,4 @@
-package com.sparta.delivery.payment.presentation.dto.response;
+package com.sparta.delivery.payment.presentation.dto;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

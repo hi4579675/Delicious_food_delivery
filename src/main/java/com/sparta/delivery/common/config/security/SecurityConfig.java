@@ -1,10 +1,5 @@
 package com.sparta.delivery.common.config.security;
 
-import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
-
-import com.sparta.delivery.auth.infrastructure.jwt.JwtAuthenticationEntryPoint;
-import com.sparta.delivery.auth.infrastructure.jwt.JwtAuthenticationFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -12,10 +7,14 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import lombok.RequiredArgsConstructor;
+
+import com.sparta.delivery.auth.infrastructure.jwt.JwtAuthenticationEntryPoint;
+import com.sparta.delivery.auth.infrastructure.jwt.JwtAuthenticationFilter;
 
 
 @Configuration
@@ -50,7 +49,9 @@ public class SecurityConfig {
                         // 상품 조회
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/products/*",
-                                "/api/v1/stores/*/products"
+                                "/api/v1/stores/*/products",
+                                "/api/v1/payments", // 전체 조회
+                                "/api/v1/payments/*" // 단건 조회
                         ).permitAll()
                         // --- 그 외 전부 인증 필요 ---
                         .anyRequest().authenticated()

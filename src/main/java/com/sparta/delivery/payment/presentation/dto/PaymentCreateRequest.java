@@ -1,4 +1,4 @@
-package com.sparta.delivery.payment.presentation.dto.request;
+package com.sparta.delivery.payment.presentation.dto;
 
 import java.util.UUID;
 
