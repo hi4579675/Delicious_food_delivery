@@ -27,5 +27,13 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     Page<Product> findByStoreIdAndIsHiddenFalse(UUID storeId, Pageable pageable);
 
+    Page<Product> findByStoreIdAndProductNameContainingIgnoreCase(
+            UUID storeId, String keyword, Pageable pageable
+    );
+
+    Page<Product> findByStoreIdAndIsHiddenFalseAndProductNameContainingIgnoreCase(
+            UUID storeId, String keyword, Pageable pageable
+    );
+
     boolean existsByStoreIdAndProductName(UUID storeId, String productName);
 }

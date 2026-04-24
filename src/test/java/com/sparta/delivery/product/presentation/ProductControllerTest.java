@@ -154,7 +154,7 @@ class ProductControllerTest {
             UUID storeId = UUID.randomUUID();
             ProductResponse response = productResponse(UUID.randomUUID(), storeId, "Americano", false, false);
 
-            given(productService.getProducts(null, null, storeId, 0, 10, null))
+            given(productService.getProducts(null, null, storeId, 0, 10, null, null))
                     .willReturn(new PageImpl<>(List.of(response)));
 
             // when & then
@@ -166,7 +166,30 @@ class ProductControllerTest {
                     .andExpect(jsonPath("$.data.content[0].storeId").value(storeId.toString()))
                     .andExpect(jsonPath("$.data.content[0].productName").value("Americano"));
 
-            then(productService).should().getProducts(null, null, storeId, 0, 10, null);
+            then(productService).should().getProducts(null, null, storeId, 0, 10, null, null);
+        }
+
+        @Test
+        @DisplayName("reads searched product list for anonymous user")
+        void getProducts_search_success_anonymous() throws Exception {
+            // given
+            UUID storeId = UUID.randomUUID();
+            ProductResponse response = productResponse(UUID.randomUUID(), storeId, "Americano", false, false);
+
+            given(productService.getProducts(null, null, storeId, 0, 10, null, "Ameri"))
+                    .willReturn(new PageImpl<>(List.of(response)));
+
+            // when & then
+            mockMvc.perform(get("/api/v1/stores/{storeId}/products", storeId)
+                            .param("page", "0")
+                            .param("size", "10")
+                            .param("keyword", "Ameri"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.content[0].storeId").value(storeId.toString()))
+                    .andExpect(jsonPath("$.data.content[0].productName").value("Americano"));
+
+            then(productService).should().getProducts(null, null, storeId, 0, 10, null, "Ameri");
         }
     }
 

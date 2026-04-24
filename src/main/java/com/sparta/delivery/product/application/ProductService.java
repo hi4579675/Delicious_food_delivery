@@ -23,7 +23,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -79,7 +78,9 @@ public class ProductService {
             UUID storeId,
             int page,
             int size,
-            String sort) {
+            String sort,
+            String keyword
+    ) {
         Store store = getStoreOrThrow(storeId);
 
         boolean canViewHidden =
@@ -93,9 +94,9 @@ public class ProductService {
                 normalizeSort(sort)
         );
 
-        Page<Product> products =  canViewHidden
-                ? productRepository.findByStoreId(storeId, pageable)
-                : productRepository.findByStoreIdAndIsHiddenFalse(storeId, pageable);
+        String normalizedKeyword = normalizeKeyword(keyword);
+
+        Page<Product> products =  getProductPage(storeId, normalizedKeyword, canViewHidden, pageable);
 
         return products.map(ProductResponse::from);
     }
@@ -234,6 +235,30 @@ public class ProductService {
                 : Sort.Direction.DESC;
 
         return Sort.by(sortDirection, property);
+    }
+
+    private Page<Product> getProductPage(
+            UUID storeId,
+            String keyword,
+            boolean canViewHidden,
+            Pageable pageable
+    ) {
+        if (keyword == null) {
+            return canViewHidden
+                    ? productRepository.findByStoreId(storeId, pageable)
+                    : productRepository.findByStoreIdAndIsHiddenFalse(storeId, pageable);
+        }
+
+        return canViewHidden
+                ? productRepository.findByStoreIdAndProductNameContainingIgnoreCase(storeId, keyword, pageable)
+                : productRepository.findByStoreIdAndIsHiddenFalseAndProductNameContainingIgnoreCase(storeId, keyword, pageable);
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        return keyword.trim();
     }
 
 }

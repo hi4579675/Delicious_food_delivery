@@ -191,7 +191,7 @@ class ProductServiceTest {
                     .willReturn(new PageImpl<>(List.of(visibleProduct)));
 
             // when
-            Page<ProductResponse> responses = productService.getProducts(null, null, storeId, 0, 10, null);
+            Page<ProductResponse> responses = productService.getProducts(null, null, storeId, 0, 10, null, null);
 
             // then
             assertThat(responses.getContent()).hasSize(1);
@@ -212,7 +212,7 @@ class ProductServiceTest {
                     .willReturn(new PageImpl<>(List.of(hiddenProduct)));
 
             // when
-            Page<ProductResponse> responses = productService.getProducts(99L, UserRole.MANAGER, storeId, 0, 10, null);
+            Page<ProductResponse> responses = productService.getProducts(99L, UserRole.MANAGER, storeId, 0, 10, null, null);
 
             // then
             assertThat(responses.getContent()).hasSize(1);
@@ -231,7 +231,7 @@ class ProductServiceTest {
                     .willReturn(Page.empty());
 
             // when
-            productService.getProducts(99L, UserRole.MANAGER, storeId, 0, 999, null);
+            productService.getProducts(99L, UserRole.MANAGER, storeId, 0, 999, null, null);
 
             // then
             then(productRepository).should().findByStoreId(eq(storeId), argThat(pageable ->
@@ -239,6 +239,70 @@ class ProductServiceTest {
                             && pageable.getPageSize() == 10
                             && pageable.getSort().equals(Sort.by(Sort.Direction.DESC, "createdAt"))
             ));
+        }
+
+        @Test
+        @DisplayName("searches visible products by keyword for anonymous user")
+        void getProducts_search_success_anonymous() {
+            // given
+            UUID storeId = UUID.randomUUID();
+            Product visibleProduct = createProduct(UUID.randomUUID(), storeId, "Americano");
+
+            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(productRepository.findByStoreIdAndIsHiddenFalseAndProductNameContainingIgnoreCase(
+                    eq(storeId), eq("Ameri"), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(visibleProduct)));
+
+            // when
+            Page<ProductResponse> responses = productService.getProducts(null, null, storeId, 0, 10, null, "Ameri");
+
+            // then
+            assertThat(responses.getContent()).hasSize(1);
+            assertThat(responses.getContent().get(0).productName()).isEqualTo("Americano");
+            then(productRepository).should(never())
+                    .findByStoreIdAndProductNameContainingIgnoreCase(eq(storeId), eq("Ameri"), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("searches all products by keyword for manager")
+        void getProducts_search_success_manager() {
+            // given
+            UUID storeId = UUID.randomUUID();
+            Product hiddenProduct = createProduct(UUID.randomUUID(), storeId, "Latte");
+            hiddenProduct.changeHidden(true);
+
+            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(productRepository.findByStoreIdAndProductNameContainingIgnoreCase(
+                    eq(storeId), eq("Lat"), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(hiddenProduct)));
+
+            // when
+            Page<ProductResponse> responses = productService.getProducts(99L, UserRole.MANAGER, storeId, 0, 10, null, "Lat");
+
+            // then
+            assertThat(responses.getContent()).hasSize(1);
+            assertThat(responses.getContent().get(0).isHidden()).isTrue();
+            then(productRepository).should(never())
+                    .findByStoreIdAndIsHiddenFalseAndProductNameContainingIgnoreCase(eq(storeId), eq("Lat"), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("normalizes blank keyword to default list read")
+        void getProducts_normalizesBlankKeyword() {
+            // given
+            UUID storeId = UUID.randomUUID();
+
+            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(productRepository.findByStoreId(eq(storeId), any(Pageable.class)))
+                    .willReturn(Page.empty());
+
+            // when
+            productService.getProducts(99L, UserRole.MANAGER, storeId, 0, 10, null, "   ");
+
+            // then
+            then(productRepository).should().findByStoreId(eq(storeId), any(Pageable.class));
+            then(productRepository).should(never())
+                    .findByStoreIdAndProductNameContainingIgnoreCase(eq(storeId), any(), any(Pageable.class));
         }
     }
 

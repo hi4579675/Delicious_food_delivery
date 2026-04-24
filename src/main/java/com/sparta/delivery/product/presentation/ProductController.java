@@ -71,7 +71,8 @@ public class ProductController {
             @PathVariable UUID storeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String sort
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword
     ) {
         Long actorId = principal == null ? null : principal.getId();
         UserRole actorRole = principal == null ? null : UserRole.valueOf(principal.getRole());
@@ -82,7 +83,8 @@ public class ProductController {
                 storeId,
                 page,
                 size,
-                sort
+                sort,
+                keyword
         );
 
         return ResponseEntity.ok(ApiResponse.success(response));
