@@ -2,6 +2,7 @@ package com.sparta.delivery.ai.domain.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -43,6 +44,27 @@ public class LlmCall {
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
 
+    @Builder
+    private LlmCall(
+            UUID llmId,
+            UUID productId,
+            String inputSnapshot,
+            String providerStatusCode,
+            String rawResponse,
+            String generatedText,
+            LocalDateTime createdAt,
+            Long createdBy
+    ) {
+        this.llmId = llmId;
+        this.productId = productId;
+        this.inputSnapshot = inputSnapshot;
+        this.providerStatusCode = providerStatusCode;
+        this.rawResponse = rawResponse;
+        this.generatedText = generatedText;
+        this.createdAt = createdAt;
+        this.createdBy = createdBy;
+    }
+
     public static LlmCall create(
             UUID llmId,
             UUID productId,
@@ -52,16 +74,16 @@ public class LlmCall {
             String generatedText,
             Long createdBy
     ) {
-        LlmCall llmCall = new LlmCall();
-        llmCall.llmId = llmId;
-        llmCall.productId = productId;
-        llmCall.inputSnapshot = inputSnapshot;
-        llmCall.providerStatusCode = providerStatusCode;
-        llmCall.rawResponse = rawResponse;
-        llmCall.generatedText = generatedText;
-        llmCall.createdAt = LocalDateTime.now();
-        llmCall.createdBy = createdBy;
-        return llmCall;
+        return LlmCall.builder()
+                .llmId(llmId)
+                .productId(productId)
+                .inputSnapshot(inputSnapshot)
+                .providerStatusCode(providerStatusCode)
+                .rawResponse(rawResponse)
+                .generatedText(generatedText)
+                .createdAt(LocalDateTime.now())
+                .createdBy(createdBy)
+                .build();
     }
 
 }
