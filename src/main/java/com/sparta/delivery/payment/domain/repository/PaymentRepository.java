@@ -9,10 +9,10 @@ import com.sparta.delivery.payment.domain.entity.Payment;
 
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
-    boolean existsByOrderIdAndDeletedAtIsNull(UUID orderId);
+    boolean existsByOrderId(UUID orderId);
 
-    Optional<Payment> findByOrderIdAndDeletedAtIsNull(UUID orderId);
+    Optional<Payment> findByOrderId(UUID orderId);
 
-    Optional<Payment> findByPaymentIdAndDeletedAtIsNull(UUID paymentId);
+    Optional<Payment> findByPaymentId(UUID paymentId);
 
 }
