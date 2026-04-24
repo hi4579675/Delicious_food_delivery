@@ -1,4 +1,4 @@
-# 008. 예외 처리 전략 비교 및 선택 근거
+# 예외 처리 전략
 
 > **이 문서를 보면**: 왜 개별 예외 클래스 방식을 선택했는지, 기존 방식과 뭐가 다른지, MSA에서 어떤 이점이 있는지 파악 가능.
 >
@@ -436,5 +436,5 @@ if (order.isOverCancelDeadline()) {
 
 ## 관련 문서
 
-- [007. 공통 기반 가이드](./007-common-foundation-guide.md) — 예외 사용법 상세
-- [004. 아키텍처 가이드](./004-architecture.md) — 계층별 역할
+- [공통 기반 사용 가이드](../architecture/common-foundation.md) — 예외 사용법 상세
+- [패키지·계층 구조 가이드](../architecture/package-structure.md) — 계층별 역할

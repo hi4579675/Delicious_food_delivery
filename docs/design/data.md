@@ -1,4 +1,4 @@
-# 002. 데이터 명세
+# 데이터 명세
 
 > **이 문서를 보면**: ERD 어디서 보는지, 테이블 규약이 뭔지, 감사 필드는 어떻게 쓰는지 파악 가능.
 >
@@ -76,7 +76,7 @@ ERD, 테이블 명세, 데이터 규약을 정의합니다.
 
 > **주의**: `_by` 필드는 Java에서 **`Long` 타입**으로, **user_id 값만 저장**합니다.  
 > JPA 엔티티에서 `@ManyToOne User` 관계 매핑은 **금지** — 도메인 강결합 방지 및 MSA 전환 대비.  
-> `BaseEntity`는 `@MappedSuperclass` 단순 상속 구조. 자세한 정책은 [005. JPA 엔티티 설계 가이드](./005-jpa-guidelines.md#3-공통-엔티티-정책) 참고.
+> `BaseEntity`는 `@MappedSuperclass` 단순 상속 구조. 자세한 정책은 [JPA 엔티티 설계 가이드](../architecture/jpa.md#3-공통-엔티티-정책) 참고.
 
 ### 3-4. Soft Delete
 
@@ -114,7 +114,7 @@ ERD, 테이블 명세, 데이터 규약을 정의합니다.
 
 ## 관련 문서
 
-- [000. 프로젝트 개요](./000-overview.md)
-- [001. 도메인 명세](./001-domain-spec.md)
-- [004. 아키텍처 가이드](./004-architecture.md)
-- [005. JPA 엔티티 설계 가이드](./005-jpa-guidelines.md)
+- [프로젝트 개요](../overview.md)
+- [도메인 명세](./domain.md)
+- [패키지·계층 구조 가이드](../architecture/package-structure.md)
+- [JPA 엔티티 설계 가이드](../architecture/jpa.md)

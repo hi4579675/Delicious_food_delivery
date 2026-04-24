@@ -1,4 +1,4 @@
-# 006. 팀 협업 컨벤션
+# 팀 협업 컨벤션
 
 > **이 문서를 보면**: 이슈/브랜치/커밋/PR을 어떤 규칙으로 만들어야 하는지 파악 가능.
 >
@@ -21,8 +21,8 @@
 GitHub에서 이슈 생성 시 **자동으로 템플릿이 적용**됩니다.
 
 ### 📄 템플릿 파일
-- [`.github/ISSUE_TEMPLATE/feature.md`](../.github/ISSUE_TEMPLATE/feature.md) — 기능 이슈
-- [`.github/ISSUE_TEMPLATE/bug.md`](../.github/ISSUE_TEMPLATE/bug.md) — 버그 리포트
+- [`.github/ISSUE_TEMPLATE/feature.md`](../../.github/ISSUE_TEMPLATE/feature.md) — 기능 이슈
+- [`.github/ISSUE_TEMPLATE/bug.md`](../../.github/ISSUE_TEMPLATE/bug.md) — 버그 리포트
 
 ### 사용 방법
 1. GitHub > Issues > **New issue** 클릭
@@ -107,7 +107,7 @@ GitHub에서 이슈 생성 시 **자동으로 템플릿이 적용**됩니다.
 GitHub에서 PR 생성 시 **자동으로 템플릿이 적용**됩니다.
 
 ### 📄 템플릿 파일
-- [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md)
+- [`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md)
 
 ### PR 규칙
 
@@ -119,5 +119,5 @@ GitHub에서 PR 생성 시 **자동으로 템플릿이 적용**됩니다.
 
 ## 📚 관련 문서
 
-- [004. 아키텍처 가이드](./004-architecture.md) — 계층 구조 및 코드 배치 규칙
-- [README](../README.md) — 프로젝트 개요 및 실행 방법
+- [패키지·계층 구조 가이드](../architecture/package-structure.md) — 계층 구조 및 코드 배치 규칙
+- [README](../../README.md) — 프로젝트 개요 및 실행 방법

@@ -1,4 +1,4 @@
-# 007. 공통 기반(Common Foundation) 사용 가이드
+# 공통 기반 사용 가이드
 
 > **이 문서를 보면**: 공통 모듈에서 제공하는 응답 포맷 / 예외 처리 / 감사 필드 / 보안 뼈대를 내 도메인에서 어떻게 써야 하는지 파악 가능.
 >
@@ -8,7 +8,7 @@
 
 ## 한 줄 요약
 
-대부분의 엔티티는 `BaseEntity` 상속 (로그성 테이블은 예외 — [005](./005-jpa-guidelines.md) 참고) / 모든 예외는 `BaseException` 상속 / 모든 컨트롤러 응답은 `ApiResponse` 포맷 / 페이지 응답은 `PageResponse.from(page)`.
+대부분의 엔티티는 `BaseEntity` 상속 (로그성 테이블은 예외 — [JPA 가이드](./jpa.md) 참고) / 모든 예외는 `BaseException` 상속 / 모든 컨트롤러 응답은 `ApiResponse` 포맷 / 페이지 응답은 `PageResponse.from(page)`.
 
 ---
 
@@ -46,7 +46,7 @@
 | 도메인 전용 예외 | `{domain}/domain/exception/` |
 | 커스텀 쿼리 구현체 | `{domain}/infrastructure/persistence/repository/` |
 
-> 더 자세한 위치 가이드는 [`docs/004-architecture.md`](./004-architecture.md) 참고.
+> 더 자세한 위치 가이드는 [패키지·계층 구조 가이드](./package-structure.md) 참고.
 
 ---
 
@@ -63,7 +63,7 @@ presentation → application → domain
 - `domain`은 웹(HTTP)이나 외부 API를 모름 — JPA 어노테이션까지는 허용
 - `infrastructure`는 **커스텀 쿼리(QueryDSL 등) / 외부 API 클라이언트 / JWT** 등이 필요할 때만 등장 (기본 CRUD는 `JpaRepository` 프록시가 자동 처리)
 
-> 자세한 가이드라인은 [`004. 아키텍처 가이드 #의존성 가이드라인`](./004-architecture.md#의존성-가이드라인) 참고.
+> 자세한 가이드라인은 [패키지·계층 구조 가이드 #의존성 가이드라인](./package-structure.md#의존성-가이드라인) 참고.
 
 ---
 
@@ -92,7 +92,7 @@ public class Store extends BaseEntity {   // 🔴 일반 엔티티는 BaseEntity
 - 다른 도메인 엔티티는 **Long/UUID FK 로만** 참조
 - 모든 연관관계는 `LAZY`
 
-> 세부 규칙은 [`docs/005-jpa-guidelines.md`](./005-jpa-guidelines.md) 참고.
+> 세부 규칙은 [JPA 가이드](./jpa.md) 참고.
 
 ---
 
@@ -217,7 +217,7 @@ public class UserService {
 - **Q. 공통 예외(인증/인가/404 등)도 따로 만들어야 하나요?**
   → 아니요. `CommonErrorCode` + `CommonException`이 이미 준비돼 있습니다. 꼭 도메인 고유 의미가 있을 때만 새 enum 추가.
 - **Q. 왜 단일 `UserException` 대신 개별 클래스?**
-  → `throw new UserNotFoundException()`이 `throw new UserException(UserErrorCode.USER_NOT_FOUND)`보다 읽기 쉽고, catch할 때도 특정 예외만 잡을 수 있음. 상세 근거는 [008. 예외 처리 전략](./008-exception-strategy.md) 참고.
+  → `throw new UserNotFoundException()`이 `throw new UserException(UserErrorCode.USER_NOT_FOUND)`보다 읽기 쉽고, catch할 때도 특정 예외만 잡을 수 있음. 상세 근거는 [예외 처리 전략](../conventions/exception.md) 참고.
 
 ---
 
@@ -351,7 +351,7 @@ public class UserController {
 
 ## 체크리스트 (새 도메인 착수 시)
 
-- [ ] 엔티티가 `BaseEntity` 를 상속했는가 (로그성 테이블은 예외 — [005](./005-jpa-guidelines.md) 참고)
+- [ ] 엔티티가 `BaseEntity` 를 상속했는가 (로그성 테이블은 예외 — [JPA 가이드](./jpa.md) 참고)
 - [ ] 연관관계는 Long/UUID FK 만 사용했는가 (`@ManyToOne {다른도메인엔티티}` 금지)
 - [ ] `{Domain}ErrorCode` enum을 작성했는가
 - [ ] ErrorCode 하나당 개별 예외 클래스를 작성했는가 (예: `UserNotFoundException`)
@@ -366,7 +366,7 @@ public class UserController {
 
 ## 관련 문서
 
-- [004. 아키텍처 가이드](./004-architecture.md)
-- [005. JPA 가이드](./005-jpa-guidelines.md)
-- [006. 팀 협업 컨벤션](./006-conventions.md)
-- [008. 예외 처리 전략](./008-exception-strategy.md)
+- [패키지·계층 구조 가이드](./package-structure.md)
+- [JPA 가이드](./jpa.md)
+- [팀 협업 컨벤션](../conventions/team.md)
+- [예외 처리 전략](../conventions/exception.md)

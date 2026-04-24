@@ -1,8 +1,12 @@
-# 004. 아키텍처 가이드
+# 패키지·계층 구조 가이드
 
 > **이 문서를 보면**: 폴더 구조가 왜 이렇게 생겼는지, 어떤 코드를 어디에 둬야 하는지 파악 가능.
 >
 > **언제 다시 보나요**: 새 기능 구현 시, 파일 위치 헷갈릴 때, 신규 팀원 온보딩 시.
+
+> 🔖 **용어 주의**
+> 이 문서의 `infrastructure/`는 **코드 계층 이름**(커스텀 쿼리 구현체, 외부 API 클라이언트, JWT 등의 위치)입니다.
+> 배포 환경 의미의 "인프라"(EC2, Docker, 네트워크)는 [인프라 명세](../operations/infrastructure.md) 참고 — 이름만 같고 다른 개념입니다.
 
 ---
 
@@ -317,9 +321,9 @@ user/
 ### 8. `order/` — 주문 모듈
 주문 생성, 상태 전이. `user/`와 동일한 구조.
 
-> - 주문 플로우: `PENDING(CUSTOMER)` → `ACCEPTED` → `COOKING` → `DELIVERING` → `DELIVERED` → `COMPLETED(OWNER)` / `CANCELED`는 `PENDING`·`ACCEPTED`에서만 분기 (상세는 [001](./001-domain-spec.md#5-주문-상태-흐름))
+> - 주문 플로우: `PENDING(CUSTOMER)` → `ACCEPTED` → `COOKING` → `DELIVERING` → `DELIVERED` → `COMPLETED(OWNER)` / `CANCELED`는 `PENDING`·`ACCEPTED`에서만 분기 (상세는 [도메인 명세](../design/domain.md#5-주문-상태-흐름))
 > - 상태 전이 검증 로직은 `application/` 서비스 안에서 처리
-> - `Order`와 `OrderItem`은 생명주기를 공유 → `Order`에서 `OrderItem` 컬렉션 매핑 예외 허용 ([005. JPA 가이드](./005-jpa-guidelines.md) 2-3 참고)
+> - `Order`와 `OrderItem`은 생명주기를 공유 → `Order`에서 `OrderItem` 컬렉션 매핑 예외 허용 ([JPA 가이드](./jpa.md) 2-3 참고)
 
 ---
 

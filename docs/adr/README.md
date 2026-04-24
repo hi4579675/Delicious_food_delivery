@@ -9,7 +9,12 @@
 
 | 번호 | 제목 | 상태 | 날짜 |
 |:---:|------|:----:|------|
-| 001 | [예시: JPA를 ORM으로 선택](./001-why-jpa.md) | Accepted | 2026-04-20 |
+| 001 | [아키텍처 스탠스 — Layered + Package by Feature, DDD 용어만 차용](./001-layered-architecture-stance.md) | Accepted | 2026-04-23 |
+| 002 | [예외 처리 전략 — 도메인별 ErrorCode + 개별 Exception 클래스](./002-exception-handling-strategy.md) | Accepted | 2026-04-23 |
+| 003 | [엔티티 연관관계 규칙 — 같은 도메인 `@ManyToOne`, 다른 도메인 FK](./003-entity-relationship-rules.md) | Proposed | 2026-04-23 |
+| 004 | [엔티티 생성 패턴 — 외부 `create()` + 내부 `private builder()`](./004-entity-creation-pattern.md) | Accepted | 2026-04-23 |
+| 005 | [문자열 필드 공백 처리 — `nullable=false` 거부 / `nullable=true` null 정규화](./005-blank-string-normalization.md) | Accepted | 2026-04-23 |
+| 006 | [AI 상품 설명 — "설정"과 "상태" 필드 분리](./006-ai-description-field-design.md) | Proposed | 2026-04-23 |
 
 ---
 
