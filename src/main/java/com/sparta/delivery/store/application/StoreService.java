@@ -21,9 +21,11 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -55,7 +57,16 @@ public class StoreService {
                 0
         );
 
-        return StoreResponse.from(storeRepository.save(store));
+        Store savedStore = storeRepository.save(store);
+
+        log.info("가게 생성 완료 - userId={}, storeId={}, storeName={}, regionId={}, categoryId={}",
+                userId,
+                savedStore.getStoreId(),
+                savedStore.getStoreName(),
+                savedStore.getRegionId(),
+                savedStore.getCategoryId());
+
+        return StoreResponse.from(savedStore);
     }
 
     /** 조건에 따라 가게 목록을 조회한다. */
@@ -109,6 +120,14 @@ public class StoreService {
                 request.isActive()
         );
 
+        log.info("가게 수정 완료 - actorId={}, actorRole={}, storeId={}, storeName={}, regionId={}, categoryId={}",
+                actorId,
+                actorRole,
+                storeId,
+                store.getStoreName(),
+                store.getRegionId(),
+                store.getCategoryId());
+
         return StoreResponse.from(store);
     }
 
@@ -119,6 +138,12 @@ public class StoreService {
         validateStoreAccess(store, actorId, actorRole);
 
         store.softDelete(actorId);
+
+        log.info("가게 삭제 완료 - actorId={}, actorRole={}, storeId={}, storeName={}",
+                actorId,
+                actorRole,
+                storeId,
+                store.getStoreName());
     }
 
     private Store getStoreOrThrow(UUID storeId) {

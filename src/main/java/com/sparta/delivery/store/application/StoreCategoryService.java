@@ -11,9 +11,11 @@ import com.sparta.delivery.store.presentation.dto.StoreCategoryUpdateRequest;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -37,7 +39,15 @@ public class StoreCategoryService {
                 request.isActive()
         );
 
-        return StoreCategoryResponse.from(storeCategoryRepository.save(category));
+        StoreCategory savedCategory = storeCategoryRepository.save(category);
+
+        log.info("가게 카테고리 생성 완료 - categoryId={}, categoryName={}, sortOrder={}, 활성여부={}",
+                savedCategory.getCategoryId(),
+                savedCategory.getCategoryName(),
+                savedCategory.getSortOrder(),
+                savedCategory.getIsActive());
+
+        return StoreCategoryResponse.from(savedCategory);
     }
 
     /** 가게 카테고리 목록을 조회한다. */
@@ -75,6 +85,12 @@ public class StoreCategoryService {
                 request.isActive()
         );
 
+        log.info("가게 카테고리 수정 완료 - categoryId={}, categoryName={}, sortOrder={}, 활성여부={}",
+                categoryId,
+                category.getCategoryName(),
+                category.getSortOrder(),
+                category.getIsActive());
+
         return StoreCategoryResponse.from(category);
     }
 
@@ -83,6 +99,12 @@ public class StoreCategoryService {
     public void deleteCategory(UUID categoryId, Long currentUserId) {
         StoreCategory category = getCategoryOrThrow(categoryId);
         category.softDelete(currentUserId);
+
+        log.info("가게 카테고리 삭제 완료 - actorId={}, categoryId={}, categoryName={}, sortOrder={}",
+                currentUserId,
+                categoryId,
+                category.getCategoryName(),
+                category.getSortOrder());
     }
 
     private StoreCategory getCategoryOrThrow(UUID categoryId) {
