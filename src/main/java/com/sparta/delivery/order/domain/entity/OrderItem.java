@@ -1,5 +1,9 @@
 package com.sparta.delivery.order.domain.entity;
 
+import com.sparta.delivery.order.domain.exception.InvalidOrderItemException;
+import com.sparta.delivery.order.domain.exception.InvalidOrderItemQuantityException;
+import com.sparta.delivery.order.domain.exception.InvalidOrderItemUnitPriceException;
+import com.sparta.delivery.order.domain.exception.InvalidProductNameSnapshotException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -65,11 +69,11 @@ public class OrderItem {
             Integer unitPrice,
             String productNameSnapshot
     ) {
-        this.productId = productId;
-        this.quantity = quantity;
-        this.unitPrice = unitPrice;
-        this.lineTotalPrice = quantity * unitPrice;
-        this.productNameSnapshot = productNameSnapshot;
+        this.productId = requireProductId(productId);
+        this.quantity = requireQuantity(quantity);
+        this.unitPrice = requireUnitPrice(unitPrice);
+        this.lineTotalPrice = this.quantity * this.unitPrice;
+        this.productNameSnapshot = requireProductNameSnapshot(productNameSnapshot);
     }
 
     public static OrderItem create(
@@ -87,6 +91,37 @@ public class OrderItem {
     }
 
     void setOrder(Order order) {
+        if (order == null || (this.order != null && this.order != order)) {
+            throw new InvalidOrderItemException();
+        }
         this.order = order;
+    }
+
+    private static UUID requireProductId(UUID productId) {
+        if (productId == null) {
+            throw new InvalidOrderItemException();
+        }
+        return productId;
+    }
+
+    private static Integer requireQuantity(Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new InvalidOrderItemQuantityException();
+        }
+        return quantity;
+    }
+
+    private static Integer requireUnitPrice(Integer unitPrice) {
+        if (unitPrice == null || unitPrice <= 0) {
+            throw new InvalidOrderItemUnitPriceException();
+        }
+        return unitPrice;
+    }
+
+    private static String requireProductNameSnapshot(String productNameSnapshot) {
+        if (productNameSnapshot == null || productNameSnapshot.isBlank()) {
+            throw new InvalidProductNameSnapshotException();
+        }
+        return productNameSnapshot;
     }
 }
