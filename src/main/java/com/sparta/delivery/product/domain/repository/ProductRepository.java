@@ -19,5 +19,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     List<Product> findAllByStoreIdOrderByDisplayOrderAsc(UUID storeId);
 
+    List<Product> findAllByStoreIdAndIsHiddenFalseOrderByDisplayOrderAsc(UUID storeId);
+
     boolean existsByStoreIdAndProductName(UUID storeId, String productName);
 }
