@@ -8,11 +8,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StoreCategoryRepository extends JpaRepository<StoreCategory, UUID> {
 
-    boolean existsByCategoryNameAndDeletedAtIsNull(String categoryName);
+    boolean existsByCategoryName(String categoryName);
 
-    Optional<StoreCategory> findByCategoryIdAndDeletedAtIsNull(UUID categoryId);
+    boolean existsBySortOrder(Integer sortOrder);
 
-    List<StoreCategory> findAllByDeletedAtIsNullOrderBySortOrderAsc();
+    Optional<StoreCategory> findByCategoryId(UUID categoryId);
 
-    List<StoreCategory> findAllByIsActiveTrueAndDeletedAtIsNullOrderBySortOrderAsc();
+    Optional<StoreCategory> findTopByOrderBySortOrderDesc();
+
+    List<StoreCategory> findAllByOrderBySortOrderAsc();
+
+    List<StoreCategory> findAllByIsActiveTrueOrderBySortOrderAsc();
 }
