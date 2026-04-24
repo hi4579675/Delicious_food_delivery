@@ -5,6 +5,7 @@ import com.sparta.delivery.ai.domain.exception.InvalidLlmNameException;
 import com.sparta.delivery.common.model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -26,17 +27,36 @@ public class Llm extends BaseEntity {
     @Column(name = "llm_name", nullable = false, unique = true, length = 100)
     private String llmName;
 
+    @Column(name = "provider", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private LlmProvider provider;
+
     @Column(name = "is_active", nullable = false)
     private boolean isActive;
 
-    public static Llm create(String llmName, boolean isActive) {
+    @Builder
+    private Llm(
+            String llmName,
+            LlmProvider provider,
+            boolean isActive
+    ) {
+        this.llmName = llmName;
+        this.provider = provider;
+        this.isActive = isActive;
+    }
+
+    public static Llm create(
+            String llmName,
+            LlmProvider provider,
+            boolean isActive
+    ) {
         validateLlmName(llmName);
 
-        Llm llm = new Llm();
-        llm.llmName = llmName;
-        llm.isActive = isActive;
-
-        return llm;
+        return Llm.builder()
+                .llmName(llmName)
+                .provider(provider)
+                .isActive(isActive)
+                .build();
     }
 
     public void updateName(String llmName) {
@@ -52,9 +72,9 @@ public class Llm extends BaseEntity {
         this.isActive = false;
     }
 
-    // not null, non-blank and max length 100
+    // max length 100
     private static void validateLlmName(String llmName) {
-        if (llmName.length() > 100) {
+        if (llmName != null && llmName.length() > 100) {
             throw new InvalidLlmNameException();
         }
     }
