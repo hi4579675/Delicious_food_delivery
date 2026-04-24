@@ -49,9 +49,7 @@ public class SecurityConfig {
                         // 상품 조회
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/products/*",
-                                "/api/v1/stores/*/products",
-                                "/api/v1/payments", // 전체 조회
-                                "/api/v1/payments/*" // 단건 조회
+                                "/api/v1/stores/*/products"
                         ).permitAll()
                         // --- 그 외 전부 인증 필요 ---
                         .anyRequest().authenticated()
