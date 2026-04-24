@@ -152,7 +152,7 @@ class UserServiceTest {
          }
      }
 
-    // ========== updateInfo ==========
+    // 내정보 수정
 
     @Nested
     @DisplayName("내 정보 수정")
@@ -232,5 +232,62 @@ class UserServiceTest {
 
             assertThat(target.getRole()).isEqualTo(UserRole.OWNER);
         }
+
+        @Test
+        @DisplayName("MASTER 가 본인을 강등하면 ForbiddenRoleChangeException")
+        void master_cannot_demote_self() {
+            User master = createUser(1L, "m@test.com", UserRole.MASTER, "E");
+            given(userRepository.findById(1L)).willReturn(Optional.of(master));
+
+            assertThatThrownBy(() ->
+                    userService.changeRole(1L, new RoleChangeRequest(UserRole.MANAGER), 1L))
+                    .isInstanceOf(ForbiddenRoleChangeException.class);
+            assertThat(master.getRole()).isEqualTo(UserRole.MASTER);   // 변화 없음
+        }
     }
+
+    // 내정보 조회
+    @Nested
+    @DisplayName("내 정보 조회")
+    class getMe {
+
+         @Test
+         @DisplayName("정상 조회")
+        void success() {
+             User user = createUser(1L, "alice@test.com", UserRole.CUSTOMER, "E");
+             given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+             var res =  userService.getMe(1L);
+             assertThat(res.userId()).isEqualTo(1L);
+             assertThat(res.email()).isEqualTo("alice@test.com");
+         }
+
+    }
+
+    // 이메일
+    @Nested
+    @DisplayName("email 로 사용자 조회")
+    class FindByEmail {
+
+        @Test
+        @DisplayName("정상 조회")
+        void success() {
+            User user = createUser(1L, "alice@test.com", UserRole.CUSTOMER, "E");
+            given(userRepository.findByEmail("alice@test.com")).willReturn(Optional.of(user));
+
+            User found = userService.findByEmail("alice@test.com");
+
+            assertThat(found.getUserId()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("없으면 UserNotFoundException")
+        void not_found() {
+            given(userRepository.findByEmail("no@test.com")).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.findByEmail("no@test.com"))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+    }
+
 }
