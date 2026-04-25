@@ -1,6 +1,8 @@
 package com.sparta.delivery.product.domain.repository;
 
 import com.sparta.delivery.product.domain.entity.Product;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -20,6 +22,18 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     List<Product> findAllByStoreIdOrderByDisplayOrderAsc(UUID storeId);
 
     List<Product> findAllByStoreIdAndIsHiddenFalseOrderByDisplayOrderAsc(UUID storeId);
+
+    Page<Product> findByStoreId(UUID storeId, Pageable pageable);
+
+    Page<Product> findByStoreIdAndIsHiddenFalse(UUID storeId, Pageable pageable);
+
+    Page<Product> findByStoreIdAndProductNameContainingIgnoreCase(
+            UUID storeId, String keyword, Pageable pageable
+    );
+
+    Page<Product> findByStoreIdAndIsHiddenFalseAndProductNameContainingIgnoreCase(
+            UUID storeId, String keyword, Pageable pageable
+    );
 
     boolean existsByStoreIdAndProductName(UUID storeId, String productName);
 }

@@ -4,6 +4,7 @@ import com.sparta.delivery.common.model.BaseEntity;
 import com.sparta.delivery.product.domain.exception.*;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -47,6 +48,25 @@ public class Product extends BaseEntity {
     @Column(name = "display_order")
     private Integer displayOrder;
 
+    @Builder(access = AccessLevel.PRIVATE)
+    private Product(
+            UUID storeId,
+            String productName,
+            String description,
+            DescriptionSource descriptionSource,
+            Integer price,
+            Integer displayOrder
+    ) {
+        this.storeId = storeId;
+        this.productName = productName;
+        this.description = description;
+        this.descriptionSource = descriptionSource;
+        this.price = price;
+        this.isSoldOut = false;
+        this.isHidden = false;
+        this.displayOrder = displayOrder;
+    }
+
     public static Product create(
             UUID storeId,
             String productName,
@@ -60,17 +80,14 @@ public class Product extends BaseEntity {
         validatePrice(price);
         validateDisplayOrder(displayOrder);
 
-        Product product = new Product();
-        product.storeId = storeId;
-        product.productName = productName;
-        product.description = description;
-        product.descriptionSource = descriptionSource;
-        product.price = price;
-        product.isSoldOut = false;
-        product.isHidden = false;
-        product.displayOrder = displayOrder;
-
-        return product;
+        return Product.builder()
+                .storeId(storeId)
+                .productName(productName)
+                .description(description)
+                .descriptionSource(descriptionSource)
+                .price(price)
+                .displayOrder(displayOrder)
+                .build();
     }
 
     public void updateInfo(
