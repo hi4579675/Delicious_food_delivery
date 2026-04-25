@@ -13,7 +13,8 @@ public enum AiErrorCode implements ErrorCode {
 
     LLM_FORBIDDEN(HttpStatus.FORBIDDEN, "AI-101", "모델 정보에 접근할 수 없습니다."),
     DUPLICATE_LLM_NAME(HttpStatus.CONFLICT, "AI-102", "이미 존재하는 모델입니다."),
-    LLM_NOT_FOUND(HttpStatus.NOT_FOUND, "AI-103", "모델을 찾을 수 없습니다.");
+    LLM_NOT_FOUND(HttpStatus.NOT_FOUND, "AI-103", "모델을 찾을 수 없습니다."),
+    CANNOT_DELETE_ACTIVE_LLM(HttpStatus.BAD_REQUEST, "AI-104", "활성 모델은 삭제할 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;
