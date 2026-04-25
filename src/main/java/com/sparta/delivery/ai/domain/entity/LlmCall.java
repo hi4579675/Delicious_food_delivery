@@ -44,7 +44,7 @@ public class LlmCall {
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
 
-    @Builder
+    @Builder(access = AccessLevel.PRIVATE)
     private LlmCall(
             UUID llmId,
             UUID productId,

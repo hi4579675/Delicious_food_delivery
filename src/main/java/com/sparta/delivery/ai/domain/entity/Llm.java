@@ -34,7 +34,7 @@ public class Llm extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     private boolean isActive;
 
-    @Builder
+    @Builder(access = AccessLevel.PRIVATE)
     private Llm(
             String llmName,
             LlmProvider provider,
