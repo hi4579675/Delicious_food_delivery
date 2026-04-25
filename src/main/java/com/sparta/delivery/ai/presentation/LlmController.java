@@ -89,6 +89,21 @@ public class LlmController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @Operation(summary = "LLM 활성화")
+    @PatchMapping("/{llmId}/activate")
+    public ResponseEntity<ApiResponse<LlmResponse>> activate(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID llmId
+    ) {
+        LlmResponse response = llmService.activate(
+                principal.getId(),
+                UserRole.valueOf(principal.getRole()),
+                llmId
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     @Operation(summary = "LLM 삭제")
     @DeleteMapping("/{llmId}")
     public ResponseEntity<ApiResponse<LlmResponse>> delete(

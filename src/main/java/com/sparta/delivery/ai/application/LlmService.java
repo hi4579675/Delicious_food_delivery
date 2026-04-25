@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -74,6 +75,23 @@ public class LlmService {
     }
 
     @Transactional
+    public LlmResponse activate(Long actorId, UserRole actorRole, UUID llmId) {
+        validateLlmPermission(actorRole);
+        Llm target = getLlmOrThrow(llmId);
+
+        if (target.isActive()) {
+            return LlmResponse.from(target);
+        }
+        deactivateCurrentActiveLlm();
+
+        target.activate();
+        log.info("LLM 활성화 완료 - actorId={}, llmId={}, provider={}, llmName={}",
+                actorId, target.getLlmId(), target.getProvider(), target.getLlmName());
+
+        return LlmResponse.from(target);
+    }
+
+    @Transactional
     public LlmResponse delete(Long actorId, UserRole actorRole, UUID llmId) {
         validateLlmPermission(actorRole);
         Llm llm = getLlmOrThrow(llmId);
@@ -111,5 +129,10 @@ public class LlmService {
         if (nameChanged && llmRepository.existsIncludingDeletedByLlmName(llmName)) {
             throw new DuplicateLlmNameException();
         }
+    }
+
+    private void deactivateCurrentActiveLlm() {
+        llmRepository.findByIsActiveTrue()
+                .ifPresent(Llm::deactivate);
     }
 }
