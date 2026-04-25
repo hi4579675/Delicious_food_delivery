@@ -28,12 +28,15 @@ public class RegionService {
     /** 지역 생성 */
     @Transactional
     public RegionResponse createRegion(RegionCreateRequest request) {
-        validateDuplicateRegionCode(request.regionCode());
+        String normalizedRegionCode = normalize(request.regionCode());
+        String normalizedRegionName = normalize(request.regionName());
+
+        validateDuplicateRegionCode(normalizedRegionCode);
         validateParentAndDepth(request.parentId(), request.depth());
 
         Region region = Region.create(
-                request.regionCode(),
-                request.regionName(),
+                normalizedRegionCode,
+                normalizedRegionName,
                 request.parentId(),
                 request.depth(),
                 request.isActive()
@@ -87,6 +90,7 @@ public class RegionService {
     @Transactional
     public RegionResponse updateRegion(UUID regionId, RegionUpdateRequest request) {
         Region region = getRegionOrThrow(regionId);
+        String normalizedRegionName = normalize(request.regionName());
 
         // 자기 자신을 부모로 지정할 수 없음
         if (request.parentId() != null && request.parentId().equals(regionId)) {
@@ -96,7 +100,7 @@ public class RegionService {
         validateParentAndDepth(request.parentId(), request.depth());
 
         region.update(
-                request.regionName(),
+                normalizedRegionName,
                 request.parentId(),
                 request.depth(),
                 request.isActive()
@@ -141,6 +145,10 @@ public class RegionService {
         if (regionRepository.existsByRegionCode(regionCode)) {
             throw new DuplicateRegionCodeException();
         }
+    }
+
+    private String normalize(String value) {
+        return value == null ? null : value.trim();
     }
 
     /** 부모 지역과 depth 규칙 검사 */
