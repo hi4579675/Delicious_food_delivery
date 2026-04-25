@@ -3,7 +3,7 @@ package com.sparta.delivery.ai.application;
 import com.sparta.delivery.ai.domain.entity.Llm;
 import com.sparta.delivery.ai.domain.exception.CannotDeleteActiveLlmException;
 import com.sparta.delivery.ai.domain.exception.DuplicateLlmNameException;
-import com.sparta.delivery.ai.domain.exception.LlmForbiddenException;
+import com.sparta.delivery.ai.domain.exception.AiForbiddenException;
 import com.sparta.delivery.ai.domain.exception.LlmNotFoundException;
 import com.sparta.delivery.ai.domain.repository.LlmRepository;
 import com.sparta.delivery.ai.presentation.dto.request.LlmCreateRequest;
@@ -97,7 +97,7 @@ public class LlmService {
         if (actorRole == UserRole.MANAGER || actorRole == UserRole.MASTER) {
             return;
         }
-        throw new LlmForbiddenException();
+        throw new AiForbiddenException();
     }
 
     private void validateDuplicateLlmName(String llmName) {

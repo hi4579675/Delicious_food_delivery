@@ -2,6 +2,7 @@ package com.sparta.delivery.ai.domain.entity;
 
 
 import com.sparta.delivery.ai.domain.exception.InvalidLlmNameException;
+import com.sparta.delivery.ai.domain.exception.InvalidLlmProviderException;
 import com.sparta.delivery.common.model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -51,6 +52,7 @@ public class Llm extends BaseEntity {
             boolean isActive
     ) {
         validateLlmName(llmName);
+        validateProvider(provider);
 
         return Llm.builder()
                 .llmName(llmName)
@@ -72,10 +74,16 @@ public class Llm extends BaseEntity {
         this.isActive = false;
     }
 
-    // max length 100
+    // not null, non-blank, and max length 100
     private static void validateLlmName(String llmName) {
-        if (llmName != null && llmName.length() > 100) {
+        if (llmName == null || llmName.isBlank() || llmName.length() > 100) {
             throw new InvalidLlmNameException();
+        }
+    }
+
+    private static void validateProvider(LlmProvider provider) {
+        if (provider == null) {
+            throw new InvalidLlmProviderException();
         }
     }
 }
