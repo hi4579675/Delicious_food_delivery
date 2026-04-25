@@ -2,6 +2,7 @@ package com.sparta.delivery.ai.domain.entity;
 
 import com.sparta.delivery.ai.domain.exception.AiErrorCode;
 import com.sparta.delivery.ai.domain.exception.InvalidLlmNameException;
+import com.sparta.delivery.ai.domain.exception.InvalidLlmProviderException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -42,6 +43,30 @@ class LlmTest {
         assertThat(thrown).isInstanceOf(InvalidLlmNameException.class);
         InvalidLlmNameException exception = (InvalidLlmNameException) thrown;
         assertThat(exception.getCode()).isEqualTo(AiErrorCode.INVALID_LLM_NAME.getCode());
+    }
+
+    @Test
+    @DisplayName("create should throw when llmName is blank")
+    void create_shouldThrow_whenLlmNameIsBlank() {
+        // when
+        Throwable thrown = catchThrowable(() -> Llm.create("   ", LlmProvider.OPENAI, false));
+
+        // then
+        assertThat(thrown).isInstanceOf(InvalidLlmNameException.class);
+        InvalidLlmNameException exception = (InvalidLlmNameException) thrown;
+        assertThat(exception.getCode()).isEqualTo(AiErrorCode.INVALID_LLM_NAME.getCode());
+    }
+
+    @Test
+    @DisplayName("create should throw when provider is null")
+    void create_shouldThrow_whenProviderIsNull() {
+        // when
+        Throwable thrown = catchThrowable(() -> Llm.create("gpt-4.1-mini", null, false));
+
+        // then
+        assertThat(thrown).isInstanceOf(InvalidLlmProviderException.class);
+        InvalidLlmProviderException exception = (InvalidLlmProviderException) thrown;
+        assertThat(exception.getCode()).isEqualTo(AiErrorCode.INVALID_LLM_PROVIDER.getCode());
     }
 
     @Test
