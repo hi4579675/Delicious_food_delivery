@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-public record OrderResponse(
+public record OrderDetailResponse(
         UUID orderId,
         UUID storeId,
         UUID addressId,
@@ -23,8 +23,8 @@ public record OrderResponse(
         LocalDateTime updatedAt
 ) {
 
-    public static OrderResponse from(Order order) {
-        return new OrderResponse(
+    public static OrderDetailResponse from(Order order) {
+        return new OrderDetailResponse(
                 order.getOrderId(),
                 order.getStoreId(),
                 order.getAddressId(),

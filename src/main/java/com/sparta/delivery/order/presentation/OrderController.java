@@ -6,7 +6,8 @@ import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.order.application.OrderService;
 import com.sparta.delivery.order.domain.entity.OrderStatus;
 import com.sparta.delivery.order.presentation.dto.OrderCreateRequest;
-import com.sparta.delivery.order.presentation.dto.OrderResponse;
+import com.sparta.delivery.order.presentation.dto.OrderDetailResponse;
+import com.sparta.delivery.order.presentation.dto.OrderListResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -39,24 +40,24 @@ public class OrderController {
 
     @Operation(summary = "주문 생성")
     @PostMapping
-    public ResponseEntity<ApiResponse<OrderResponse>> create(
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> create(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody OrderCreateRequest request
     ) {
-        OrderResponse response = orderService.create(principal.getId(), request);
+        OrderDetailResponse response = orderService.create(principal.getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(response));
     }
 
     @Operation(summary = "내 주문 목록 조회")
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<OrderResponse>>> getMyOrders(
+    public ResponseEntity<ApiResponse<PageResponse<OrderListResponse>>> getMyOrders(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) UUID storeId,
             @RequestParam(required = false) OrderStatus status,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable
     ) {
-        PageResponse<OrderResponse> response = orderService.getMyOrders(
+        PageResponse<OrderListResponse> response = orderService.getMyOrders(
                 principal.getId(),
                 storeId,
                 status,
@@ -67,11 +68,11 @@ public class OrderController {
 
     @Operation(summary = "내 주문 상세 조회")
     @GetMapping("/{orderId}")
-    public ResponseEntity<ApiResponse<OrderResponse>> getMyOrder(
+    public ResponseEntity<ApiResponse<OrderDetailResponse>> getMyOrder(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID orderId
     ) {
-        OrderResponse response = orderService.getMyOrder(principal.getId(), orderId);
+        OrderDetailResponse response = orderService.getMyOrder(principal.getId(), orderId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

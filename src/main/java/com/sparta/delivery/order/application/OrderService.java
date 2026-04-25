@@ -16,7 +16,8 @@ import com.sparta.delivery.order.domain.exception.StoreNotOrderableException;
 import com.sparta.delivery.order.domain.repository.OrderRepository;
 import com.sparta.delivery.order.presentation.dto.OrderCreateRequest;
 import com.sparta.delivery.order.presentation.dto.OrderItemCreateRequest;
-import com.sparta.delivery.order.presentation.dto.OrderResponse;
+import com.sparta.delivery.order.presentation.dto.OrderDetailResponse;
+import com.sparta.delivery.order.presentation.dto.OrderListResponse;
 import com.sparta.delivery.product.domain.entity.Product;
 import com.sparta.delivery.product.domain.repository.ProductRepository;
 import com.sparta.delivery.store.domain.entity.Store;
@@ -46,29 +47,29 @@ public class OrderService {
     private final ProductRepository productRepository;
 
     @Transactional
-    public OrderResponse create(Long userId, OrderCreateRequest request) {
+    public OrderDetailResponse create(Long userId, OrderCreateRequest request) {
         Address address = addressService.findOwnedAddress(userId, request.addressId());
         Store store = getOrderableStore(request.storeId());
         Order order = createOrder(userId, request, address, store);
         Order savedOrder = orderRepository.save(order);
         log.info("주문 생성 완료 - userId={}, orderId={}, totalPrice={}",
                 userId, savedOrder.getOrderId(), savedOrder.getTotalPrice());
-        return OrderResponse.from(savedOrder);
+        return OrderDetailResponse.from(savedOrder);
     }
 
-    public PageResponse<OrderResponse> getMyOrders(
+    public PageResponse<OrderListResponse> getMyOrders(
             Long userId,
             UUID storeId,
             OrderStatus status,
             Pageable pageable
     ) {
-        Page<OrderResponse> page = findMyOrders(userId, storeId, status, pageable)
-                .map(OrderResponse::from);
+        Page<OrderListResponse> page = findMyOrders(userId, storeId, status, pageable)
+                .map(OrderListResponse::from);
         return PageResponse.from(page);
     }
 
-    public OrderResponse getMyOrder(Long userId, UUID orderId) {
-        return OrderResponse.from(getOwnedOrder(userId, orderId));
+    public OrderDetailResponse getMyOrder(Long userId, UUID orderId) {
+        return OrderDetailResponse.from(getOwnedOrder(userId, orderId));
     }
 
     @Transactional
