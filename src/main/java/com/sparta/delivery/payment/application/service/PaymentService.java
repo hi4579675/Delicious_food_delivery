@@ -1,6 +1,8 @@
 package com.sparta.delivery.payment.application.service;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -15,10 +17,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import com.sparta.delivery.order.domain.entity.Order;
+import com.sparta.delivery.order.domain.entity.OrderStatus;
 import com.sparta.delivery.order.domain.repository.OrderRepository;
 import com.sparta.delivery.payment.domain.entity.Payment;
 import com.sparta.delivery.payment.domain.exception.DuplicatePaymentOrderException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderIdException;
+import com.sparta.delivery.payment.domain.exception.InvalidOrderStatusForPaymentException;
 import com.sparta.delivery.payment.domain.exception.InvalidTotalPriceException;
 import com.sparta.delivery.payment.domain.exception.InvalidPaymentStatusTransitionException;
 import com.sparta.delivery.payment.domain.exception.PaymentForbiddenException;
@@ -35,6 +39,9 @@ import com.sparta.delivery.user.domain.entity.UserRole;
 @Transactional(readOnly = true)
 public class PaymentService {
 
+    private static final Set<OrderStatus> PAYMENT_ALLOWED_ORDER_STATUSES =
+            EnumSet.of(OrderStatus.PENDING, OrderStatus.ACCEPTED);
+
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
 
@@ -45,6 +52,7 @@ public class PaymentService {
         if (!order.getUserId().equals(actorId)) {
             throw new PaymentForbiddenException();
         }
+        requireOrderStatusAllowedForPayment(order.getStatus());
 
         if (!order.getTotalPrice().equals(request.totalPrice())) {
             throw new InvalidTotalPriceException();
@@ -126,7 +134,12 @@ public class PaymentService {
         Payment payment = getPaymentOrThrow(paymentId);
 
         switch (request.paymentStatus()) {
-            case APPROVED -> payment.approve(request.pgProvider(), request.pgTransactionId());
+            case APPROVED -> {
+                Order order = orderRepository.findById(payment.getOrderId())
+                        .orElseThrow(PaymentNotFoundException::new);
+                requireOrderStatusAllowedForPayment(order.getStatus());
+                payment.approve(request.pgProvider(), request.pgTransactionId());
+            }
             case FAILED -> payment.fail(request.failureReason());
             case CANCELLED -> payment.cancel();
             case PENDING -> throw new InvalidPaymentStatusTransitionException();
@@ -151,6 +164,12 @@ public class PaymentService {
     private Payment getPaymentOrThrow(UUID paymentId) {
         return paymentRepository.findByPaymentId(paymentId)
                 .orElseThrow(PaymentNotFoundException::new);
+    }
+
+    private void requireOrderStatusAllowedForPayment(OrderStatus orderStatus) {
+        if (!PAYMENT_ALLOWED_ORDER_STATUSES.contains(orderStatus)) {
+            throw new InvalidOrderStatusForPaymentException();
+        }
     }
 
     private Sort.Direction parseDirection(String direction) {

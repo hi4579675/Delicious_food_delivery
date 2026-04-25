@@ -16,15 +16,18 @@ import com.sparta.delivery.order.domain.entity.Order;
 import com.sparta.delivery.order.domain.entity.OrderItem;
 import com.sparta.delivery.order.domain.repository.OrderRepository;
 import com.sparta.delivery.payment.domain.entity.Payment;
+import com.sparta.delivery.payment.domain.entity.PaymentStatus;
 import com.sparta.delivery.payment.domain.entity.PaymentMethod;
 import com.sparta.delivery.payment.domain.exception.DuplicatePaymentOrderException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderIdException;
+import com.sparta.delivery.payment.domain.exception.InvalidOrderStatusForPaymentException;
 import com.sparta.delivery.payment.domain.exception.InvalidTotalPriceException;
 import com.sparta.delivery.payment.domain.exception.PaymentForbiddenException;
 import com.sparta.delivery.payment.domain.exception.PaymentNotFoundException;
 import com.sparta.delivery.payment.domain.repository.PaymentRepository;
 import com.sparta.delivery.payment.presentation.dto.PaymentCreateRequest;
 import com.sparta.delivery.payment.presentation.dto.PaymentResponse;
+import com.sparta.delivery.payment.presentation.dto.PaymentStatusUpdateRequest;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -83,6 +86,26 @@ class PaymentServiceTest {
             assertThat(response.paymentMethod()).isEqualTo(PaymentMethod.CARD);
             assertThat(response.totalPrice()).isEqualTo(10_000);
             then(paymentRepository).should().save(any(Payment.class));
+        }
+
+        @Test
+        @DisplayName("주문 상태가 결제 생성 허용 상태가 아니면 InvalidOrderStatusForPaymentException")
+        void create_fail_whenOrderStatusNotAllowed() {
+            // given
+            Long actorId = 1L;
+            UUID orderId = UUID.randomUUID();
+            PaymentCreateRequest request = new PaymentCreateRequest(orderId, PaymentMethod.CARD, 10_000);
+
+            Order order = createOrder(orderId, actorId, 10_000);
+            order.accept();
+            order.startCooking(); // COOKING
+            given(orderRepository.findById(orderId)).willReturn(Optional.of(order));
+
+            // when & then
+            assertThatThrownBy(() -> paymentService.create(actorId, request))
+                    .isInstanceOf(InvalidOrderStatusForPaymentException.class);
+
+            then(paymentRepository).shouldHaveNoInteractions();
         }
 
         @Test
@@ -335,6 +358,73 @@ class PaymentServiceTest {
         void getPayments_fail_whenRoleNotAllowed() {
             assertThatThrownBy(() -> paymentService.getPayments(1L, UserRole.OWNER, 0, 10, "createdAt", "desc"))
                     .isInstanceOf(PaymentForbiddenException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("결제 상태 변경")
+    class UpdateStatus {
+
+        @Test
+        @DisplayName("주문 상태가 허용 상태면 결제를 승인할 수 있다")
+        void updateStatus_success_approved() {
+            // given
+            Long actorId = 1L;
+            UUID paymentId = UUID.randomUUID();
+            UUID orderId = UUID.randomUUID();
+
+            Payment payment = createPayment(paymentId, orderId, 10_000);
+            given(paymentRepository.findByPaymentId(paymentId)).willReturn(Optional.of(payment));
+
+            Order order = createOrder(orderId, actorId, 10_000); // PENDING
+            given(orderRepository.findById(orderId)).willReturn(Optional.of(order));
+
+            PaymentStatusUpdateRequest request = new PaymentStatusUpdateRequest(
+                    PaymentStatus.APPROVED,
+                    null,
+                    "pg",
+                    "tx"
+            );
+
+            // when
+            PaymentResponse response = paymentService.updateStatus(actorId, paymentId, request);
+
+            // then
+            assertThat(response.paymentStatus()).isEqualTo(PaymentStatus.APPROVED);
+            assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.APPROVED);
+            assertThat(payment.getApprovedAt()).isNotNull();
+            then(orderRepository).should().findById(orderId);
+        }
+
+        @Test
+        @DisplayName("주문 상태가 허용 상태가 아니면 결제 승인은 InvalidOrderStatusForPaymentException")
+        void updateStatus_fail_approved_whenOrderStatusNotAllowed() {
+            // given
+            Long actorId = 1L;
+            UUID paymentId = UUID.randomUUID();
+            UUID orderId = UUID.randomUUID();
+
+            Payment payment = createPayment(paymentId, orderId, 10_000);
+            given(paymentRepository.findByPaymentId(paymentId)).willReturn(Optional.of(payment));
+
+            Order order = createOrder(orderId, actorId, 10_000);
+            order.accept();
+            order.startCooking(); // COOKING
+            given(orderRepository.findById(orderId)).willReturn(Optional.of(order));
+
+            PaymentStatusUpdateRequest request = new PaymentStatusUpdateRequest(
+                    PaymentStatus.APPROVED,
+                    null,
+                    "pg",
+                    "tx"
+            );
+
+            // when & then
+            assertThatThrownBy(() -> paymentService.updateStatus(actorId, paymentId, request))
+                    .isInstanceOf(InvalidOrderStatusForPaymentException.class);
+
+            assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+            assertThat(payment.getApprovedAt()).isNull();
         }
     }
 
