@@ -62,7 +62,7 @@ public class OrderItem {
     @Column(updatable = false)
     private Long createdBy;
 
-    @Builder
+    @Builder(access = AccessLevel.PRIVATE)
     private OrderItem(
             UUID productId,
             Integer quantity,

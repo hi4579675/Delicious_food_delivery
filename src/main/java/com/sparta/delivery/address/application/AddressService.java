@@ -44,6 +44,10 @@ public class AddressService {
                 .toList();
     }
 
+    public Address findOwnedAddress(Long userId, UUID addressId) {
+        return getOwnedAddress(userId, addressId);
+    }
+
     public AddressResponse getAddress(Long userId, UUID addressId) {
         return AddressResponse.from(getOwnedAddress(userId, addressId));
     }
