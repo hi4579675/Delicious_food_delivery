@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,6 +26,7 @@ import com.sparta.delivery.common.response.ApiResponse;
 import com.sparta.delivery.payment.application.service.PaymentService;
 import com.sparta.delivery.payment.presentation.dto.PaymentCreateRequest;
 import com.sparta.delivery.payment.presentation.dto.PaymentResponse;
+import com.sparta.delivery.payment.presentation.dto.PaymentStatusUpdateRequest;
 import com.sparta.delivery.user.domain.entity.UserRole;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -83,12 +85,25 @@ public class PaymentController {
 
     @Operation(summary = "결제 삭제")
     @DeleteMapping("/payments/{paymentId}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'MASTER')")
+    @PreAuthorize("hasRole('MASTER')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID paymentId
     ) {
         paymentService.delete(principal.getId(), UserRole.valueOf(principal.getRole()), paymentId);
         return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Operation(summary = "결제 상태 변경")
+    @PutMapping("/payments/{paymentId}/status")
+    @PreAuthorize("hasRole('MASTER')")
+    public ResponseEntity<ApiResponse<PaymentResponse>> updateStatus(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID paymentId,
+            @Valid @RequestBody PaymentStatusUpdateRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                paymentService.updateStatus(principal.getId(), paymentId, request)
+        ));
     }
 }

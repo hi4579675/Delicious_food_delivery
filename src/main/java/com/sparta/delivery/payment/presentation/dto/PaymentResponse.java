@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.sparta.delivery.payment.domain.entity.Payment;
+import com.sparta.delivery.payment.domain.entity.PaymentFailureReason;
 import com.sparta.delivery.payment.domain.entity.PaymentMethod;
 import com.sparta.delivery.payment.domain.entity.PaymentStatus;
 
@@ -16,7 +17,7 @@ public record PaymentResponse(
         LocalDateTime approvedAt,
         LocalDateTime failedAt,
         LocalDateTime cancelledAt,
-        String failureReason,
+        PaymentFailureReason failureReason,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

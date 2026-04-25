@@ -361,8 +361,8 @@ class PaymentServiceTest {
         }
 
         @Test
-        @DisplayName("CUSTOMER는 본인 주문 결제만 삭제(soft delete)할 수 있다")
-        void delete_success_customer_owner() {
+        @DisplayName("MASTER가 아니면 PaymentForbiddenException")
+        void delete_fail_whenNotMaster() {
             // given
             Long actorId = 1L;
             UUID paymentId = UUID.randomUUID();
@@ -370,32 +370,14 @@ class PaymentServiceTest {
             Payment payment = createPayment(paymentId, orderId, 10_000);
 
             given(paymentRepository.findByPaymentId(paymentId)).willReturn(Optional.of(payment));
-            given(orderRepository.findById(orderId)).willReturn(Optional.of(createOrder(orderId, actorId, 10_000)));
-
-            // when
-            paymentService.delete(actorId, UserRole.CUSTOMER, paymentId);
-
-            // then
-            assertThat(payment.isDeleted()).isTrue();
-            assertThat(payment.getDeletedBy()).isEqualTo(actorId);
-        }
-
-        @Test
-        @DisplayName("CUSTOMER가 주문 소유자가 아니면 PaymentForbiddenException")
-        void delete_fail_whenCustomerNotOwner() {
-            // given
-            Long actorId = 1L;
-            UUID paymentId = UUID.randomUUID();
-            UUID orderId = UUID.randomUUID();
-            Payment payment = createPayment(paymentId, orderId, 10_000);
-
-            given(paymentRepository.findByPaymentId(paymentId)).willReturn(Optional.of(payment));
-            given(orderRepository.findById(orderId)).willReturn(Optional.of(createOrder(orderId, 2L, 10_000)));
 
             // when & then
             assertThatThrownBy(() -> paymentService.delete(actorId, UserRole.CUSTOMER, paymentId))
                     .isInstanceOf(PaymentForbiddenException.class);
+
+            // then
             assertThat(payment.isDeleted()).isFalse();
+            then(orderRepository).shouldHaveNoInteractions();
         }
 
         @Test
@@ -408,24 +390,6 @@ class PaymentServiceTest {
             // when & then
             assertThatThrownBy(() -> paymentService.delete(1L, UserRole.MASTER, paymentId))
                     .isInstanceOf(PaymentNotFoundException.class);
-        }
-
-        @Test
-        @DisplayName("CUSTOMER 삭제 시 결제의 주문이 없으면 PaymentNotFoundException")
-        void delete_fail_whenCustomerOrderNotFound() {
-            // given
-            Long actorId = 1L;
-            UUID paymentId = UUID.randomUUID();
-            UUID orderId = UUID.randomUUID();
-            Payment payment = createPayment(paymentId, orderId, 10_000);
-
-            given(paymentRepository.findByPaymentId(paymentId)).willReturn(Optional.of(payment));
-            given(orderRepository.findById(orderId)).willReturn(Optional.empty());
-
-            // when & then
-            assertThatThrownBy(() -> paymentService.delete(actorId, UserRole.CUSTOMER, paymentId))
-                    .isInstanceOf(PaymentNotFoundException.class);
-            assertThat(payment.isDeleted()).isFalse();
         }
     }
 
@@ -448,4 +412,3 @@ class PaymentServiceTest {
         return payment;
     }
 }
-

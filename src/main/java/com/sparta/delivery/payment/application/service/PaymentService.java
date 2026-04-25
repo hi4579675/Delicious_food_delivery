@@ -20,11 +20,13 @@ import com.sparta.delivery.payment.domain.entity.Payment;
 import com.sparta.delivery.payment.domain.exception.DuplicatePaymentOrderException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderIdException;
 import com.sparta.delivery.payment.domain.exception.InvalidTotalPriceException;
+import com.sparta.delivery.payment.domain.exception.InvalidPaymentStatusTransitionException;
 import com.sparta.delivery.payment.domain.exception.PaymentForbiddenException;
 import com.sparta.delivery.payment.domain.exception.PaymentNotFoundException;
 import com.sparta.delivery.payment.domain.repository.PaymentRepository;
 import com.sparta.delivery.payment.presentation.dto.PaymentCreateRequest;
 import com.sparta.delivery.payment.presentation.dto.PaymentResponse;
+import com.sparta.delivery.payment.presentation.dto.PaymentStatusUpdateRequest;
 import com.sparta.delivery.user.domain.entity.UserRole;
 
 @Service
@@ -120,24 +122,30 @@ public class PaymentService {
     }
 
     @Transactional
+    public PaymentResponse updateStatus(Long actorId, UUID paymentId, PaymentStatusUpdateRequest request) {
+        Payment payment = getPaymentOrThrow(paymentId);
+
+        switch (request.paymentStatus()) {
+            case APPROVED -> payment.approve(request.pgProvider(), request.pgTransactionId());
+            case FAILED -> payment.fail(request.failureReason());
+            case CANCELLED -> payment.cancel();
+            case PENDING -> throw new InvalidPaymentStatusTransitionException();
+        }
+
+        log.info("결제 상태 변경 완료 - actorId={}, paymentId={}, status={}", actorId, paymentId, payment.getPaymentStatus());
+        return PaymentResponse.from(payment);
+    }
+
+    @Transactional
     public void delete(Long actorId, UserRole actorRole, UUID paymentId) {
         Payment payment = getPaymentOrThrow(paymentId);
 
-        if (actorRole == UserRole.MASTER) {
-            payment.softDelete(actorId);
-            log.info("결제 삭제 완료(MASTER) - actorId={}, paymentId={}", actorId, paymentId);
-            return;
-        }
-
-        Order order = orderRepository.findById(payment.getOrderId())
-                .orElseThrow(PaymentNotFoundException::new);
-
-        if (!order.getUserId().equals(actorId)) {
+        if (actorRole != UserRole.MASTER) {
             throw new PaymentForbiddenException();
         }
 
         payment.softDelete(actorId);
-        log.info("결제 삭제 완료(CUSTOMER) - actorId={}, paymentId={}", actorId, paymentId);
+        log.info("결제 삭제 완료(MASTER) - actorId={}, paymentId={}", actorId, paymentId);
     }
 
     private Payment getPaymentOrThrow(UUID paymentId) {

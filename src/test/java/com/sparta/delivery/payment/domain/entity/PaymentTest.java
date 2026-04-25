@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import com.sparta.delivery.payment.domain.exception.InvalidOrderIdException;
 import com.sparta.delivery.payment.domain.exception.InvalidPaymentMethodException;
+import com.sparta.delivery.payment.domain.exception.InvalidPaymentFailureReasonException;
 import com.sparta.delivery.payment.domain.exception.InvalidPaymentStatusTransitionException;
 import com.sparta.delivery.payment.domain.exception.InvalidTotalPriceException;
 
@@ -57,14 +58,22 @@ public class PaymentTest {
     }
 
     @Test
-    void fail_success_andNormalize() {
+    void fail_success_setsReason() {
         Payment payment = Payment.create(UUID.randomUUID(), PaymentMethod.CARD, 1000);
 
-        payment.fail("   ");
+        payment.fail(PaymentFailureReason.PG_TIMEOUT);
 
         assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(payment.getFailedAt()).isNotNull();
-        assertThat(payment.getFailureReason()).isNull();
+        assertThat(payment.getFailureReason()).isEqualTo(PaymentFailureReason.PG_TIMEOUT);
+    }
+
+    @Test
+    void fail_fail_whenFailureReasonNull() {
+        Payment payment = Payment.create(UUID.randomUUID(), PaymentMethod.CARD, 1000);
+
+        assertThatThrownBy(() -> payment.fail(null))
+                .isInstanceOf(InvalidPaymentFailureReasonException.class);
     }
 
     @Test
@@ -81,7 +90,7 @@ public class PaymentTest {
     @Test
     void statusTransition_fail() {
         Payment payment = Payment.create(UUID.randomUUID(), PaymentMethod.CARD, 1000);
-        payment.fail("reason");
+        payment.fail(PaymentFailureReason.UNKNOWN);
 
         assertThatThrownBy(() -> payment.approve("pg", "tx"))
                 .isInstanceOf(InvalidPaymentStatusTransitionException.class);

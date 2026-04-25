@@ -9,6 +9,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -20,23 +21,35 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.delivery.auth.infrastructure.jwt.JwtProvider;
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.payment.application.service.PaymentService;
+import com.sparta.delivery.payment.domain.entity.PaymentFailureReason;
 import com.sparta.delivery.payment.domain.entity.PaymentMethod;
 import com.sparta.delivery.payment.domain.entity.PaymentStatus;
 import com.sparta.delivery.payment.presentation.dto.PaymentCreateRequest;
 import com.sparta.delivery.payment.presentation.dto.PaymentResponse;
+import com.sparta.delivery.payment.presentation.dto.PaymentStatusUpdateRequest;
 import com.sparta.delivery.user.application.UserService;
 import com.sparta.delivery.user.domain.entity.UserRole;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(PaymentController.class)
+@Import(PaymentControllerTest.TestSecurityConfig.class)
 class PaymentControllerTest {
 
     @Autowired
@@ -53,6 +66,11 @@ class PaymentControllerTest {
 
     @MockitoBean
     private UserService userService;
+
+    @BeforeEach
+    void resetMocks() {
+        Mockito.reset(paymentService, jwtProvider, userService);
+    }
 
     @Nested
     @DisplayName("결제 생성 API")
@@ -189,6 +207,80 @@ class PaymentControllerTest {
 
             then(paymentService).should().delete(1L, UserRole.MASTER, paymentId);
         }
+
+        @Test
+        @DisplayName("MASTER가 아니면 403을 반환한다")
+        void deletePayment_forbidden_whenNotMaster() throws Exception {
+            // given
+            UUID paymentId = UUID.randomUUID();
+
+            // when & then
+            mockMvc.perform(delete("/api/v1/payments/{paymentId}", paymentId)
+                            .with(csrf())
+                            .with(authentication(authenticationToken(UserRole.CUSTOMER))))
+                    .andExpect(status().isForbidden());
+
+            then(paymentService).shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    @DisplayName("결제 상태 변경 API")
+    class UpdatePaymentStatusApi {
+
+        @Test
+        @DisplayName("MASTER 권한이면 결제 상태를 변경한다")
+        void updateStatus_success() throws Exception {
+            // given
+            UUID paymentId = UUID.randomUUID();
+            UUID orderId = UUID.randomUUID();
+
+            PaymentStatusUpdateRequest request = new PaymentStatusUpdateRequest(
+                    PaymentStatus.FAILED,
+                    PaymentFailureReason.PG_TIMEOUT,
+                    null,
+                    null
+            );
+            PaymentResponse response = paymentResponse(paymentId, orderId, 10_000);
+
+            given(paymentService.updateStatus(eq(1L), eq(paymentId), any(PaymentStatusUpdateRequest.class)))
+                    .willReturn(response);
+
+            // when & then
+            mockMvc.perform(put("/api/v1/payments/{paymentId}/status", paymentId)
+                            .with(csrf())
+                            .with(authentication(authenticationToken(UserRole.MASTER)))
+                            .contentType("application/json")
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.paymentId").value(paymentId.toString()));
+
+            then(paymentService).should().updateStatus(eq(1L), eq(paymentId), any(PaymentStatusUpdateRequest.class));
+        }
+
+        @Test
+        @DisplayName("MASTER가 아니면 403을 반환한다")
+        void updateStatus_forbidden_whenNotMaster() throws Exception {
+            // given
+            UUID paymentId = UUID.randomUUID();
+            PaymentStatusUpdateRequest request = new PaymentStatusUpdateRequest(
+                    PaymentStatus.FAILED,
+                    PaymentFailureReason.PG_TIMEOUT,
+                    null,
+                    null
+            );
+
+            // when & then
+            mockMvc.perform(put("/api/v1/payments/{paymentId}/status", paymentId)
+                            .with(csrf())
+                            .with(authentication(authenticationToken(UserRole.CUSTOMER)))
+                            .contentType("application/json")
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isForbidden());
+
+            then(paymentService).shouldHaveNoInteractions();
+        }
     }
 
     private UsernamePasswordAuthenticationToken authenticationToken(UserRole role) {
@@ -235,6 +327,18 @@ class PaymentControllerTest {
         @Override
         public String getRole() {
             return role;
+        }
+    }
+
+    @TestConfiguration
+    @EnableMethodSecurity
+    static class TestSecurityConfig {
+        @Bean
+        SecurityFilterChain testFilterChain(HttpSecurity http) throws Exception {
+            return http
+                    .csrf(AbstractHttpConfigurer::disable)
+                    .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                    .build();
         }
     }
 }
