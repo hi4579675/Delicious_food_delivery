@@ -21,7 +21,9 @@ public enum AiErrorCode implements ErrorCode {
     LLM_NOT_FOUND(HttpStatus.NOT_FOUND, "AI-202", "모델을 찾을 수 없습니다."),
     CANNOT_DELETE_ACTIVE_LLM(HttpStatus.BAD_REQUEST, "AI-203", "활성 모델은 삭제할 수 없습니다."),
 
-    LLM_CALL_NOT_FOUND(HttpStatus.NOT_FOUND, "AI-301", "LLM 호출 로그를 찾을 수 없습니다.");
+    LLM_CALL_NOT_FOUND(HttpStatus.NOT_FOUND, "AI-301", "LLM 호출 로그를 찾을 수 없습니다."),
+    EXTERNAL_LLM_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI-302", "외부 LLM 호출에 실패했습니다."),
+    ACTIVE_LLM_NOT_FOUND(HttpStatus.NOT_FOUND, "AI-303", "활성화된 LLM을 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;
