@@ -8,11 +8,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StoreRepository extends JpaRepository<Store, UUID> {
 
-    Optional<Store> findByStoreIdAndDeletedAtIsNull(UUID storeId);
+    Optional<Store> findByStoreId(UUID storeId);
 
-    List<Store> findByUserIdAndDeletedAtIsNull(Long userId);
+    List<Store> findByUserId(Long userId);
 
-    List<Store> findByRegionIdAndDeletedAtIsNull(UUID regionId);
+    List<Store> findByRegionId(UUID regionId);
 
-    List<Store> findByCategoryIdAndDeletedAtIsNull(UUID categoryId);
+    List<Store> findByCategoryId(UUID categoryId);
+
+    List<Store> findByRegionIdAndCategoryId(UUID regionId, UUID categoryId);
 }

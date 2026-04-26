@@ -1,5 +1,8 @@
 package com.sparta.delivery.ai.domain.entity;
 
+import com.sparta.delivery.ai.domain.exception.InvalidCreatedByException;
+import com.sparta.delivery.ai.domain.exception.InvalidInputSnapshotException;
+import com.sparta.delivery.ai.domain.exception.InvalidProviderStatusCodeException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -44,7 +47,7 @@ public class LlmCall {
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
 
-    @Builder
+    @Builder(access = AccessLevel.PRIVATE)
     private LlmCall(
             UUID llmId,
             UUID productId,
@@ -74,6 +77,10 @@ public class LlmCall {
             String generatedText,
             Long createdBy
     ) {
+        validateInputSnapshot(inputSnapshot);
+        validateProviderStatusCode(providerStatusCode);
+        validateCreatedBy(createdBy);
+
         return LlmCall.builder()
                 .llmId(llmId)
                 .productId(productId)
@@ -84,6 +91,24 @@ public class LlmCall {
                 .createdAt(LocalDateTime.now())
                 .createdBy(createdBy)
                 .build();
+    }
+
+    private static void validateInputSnapshot(String inputSnapshot) {
+        if (inputSnapshot == null || inputSnapshot.isBlank()) {
+            throw new InvalidInputSnapshotException();
+        }
+    }
+
+    private static void validateProviderStatusCode(String providerStatusCode) {
+        if (providerStatusCode != null && providerStatusCode.length() > 50) {
+            throw new InvalidProviderStatusCodeException();
+        }
+    }
+
+    private static void validateCreatedBy(Long createdBy) {
+        if (createdBy == null) {
+            throw new InvalidCreatedByException();
+        }
     }
 
 }

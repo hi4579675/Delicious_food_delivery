@@ -43,13 +43,16 @@ public class Region extends BaseEntity {
     private Boolean isActive;
 
     private Region(String regionCode, String regionName, UUID parentId, Integer depth, Boolean isActive) {
-        validateRegionCode(regionCode);
-        validateRegionName(regionName);
+        String normalizedRegionCode = normalize(regionCode);
+        String normalizedRegionName = normalize(regionName);
+
+        validateRegionCode(normalizedRegionCode);
+        validateRegionName(normalizedRegionName);
         validateDepth(depth);
         validateIsActive(isActive);
 
-        this.regionCode = regionCode;
-        this.regionName = regionName;
+        this.regionCode = normalizedRegionCode;
+        this.regionName = normalizedRegionName;
         this.parentId = parentId;
         this.depth = depth;
         this.isActive = isActive;
@@ -65,11 +68,13 @@ public class Region extends BaseEntity {
             Integer depth,
             Boolean isActive
     ) {
-        validateRegionName(regionName);
+        String normalizedRegionName = normalize(regionName);
+
+        validateRegionName(normalizedRegionName);
         validateDepth(depth);
         validateIsActive(isActive);
 
-        this.regionName = regionName;
+        this.regionName = normalizedRegionName;
         this.parentId = parentId;
         this.depth = depth;
         this.isActive = isActive;
@@ -93,6 +98,10 @@ public class Region extends BaseEntity {
         if (regionName == null || regionName.isBlank()) {
             throw new InvalidRegionNameException();
         }
+    }
+
+    private static String normalize(String value) {
+        return value == null ? null : value.trim();
     }
 
     private static void validateDepth(Integer depth) {

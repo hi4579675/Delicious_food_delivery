@@ -65,7 +65,7 @@ class ProductServiceTest {
             Store store = createStore(storeId, ownerId);
             ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, "coffee", 1);
 
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(store));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
             given(productRepository.existsByStoreIdAndProductName(storeId, "Americano")).willReturn(false);
             given(productRepository.save(any(Product.class))).willAnswer(invocation -> {
                 Product product = invocation.getArgument(0);
@@ -92,7 +92,7 @@ class ProductServiceTest {
             Store store = createStore(storeId, 1L);
             ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, null, 1);
 
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(store));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
 
             // when & then
             assertThatThrownBy(() -> productService.create(actorId, UserRole.OWNER, storeId, request))
@@ -109,7 +109,7 @@ class ProductServiceTest {
             Store store = createStore(storeId, ownerId);
             ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, null, 1);
 
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(store));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
             given(productRepository.existsByStoreIdAndProductName(storeId, "Americano")).willReturn(true);
 
             // when & then
@@ -151,7 +151,7 @@ class ProductServiceTest {
             product.changeHidden(true);
 
             given(productRepository.findByProductId(productId)).willReturn(Optional.of(product));
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
 
             // when & then
             assertThatThrownBy(() -> productService.getProduct(null, null, productId))
@@ -169,7 +169,7 @@ class ProductServiceTest {
             product.changeHidden(true);
 
             given(productRepository.findByProductId(productId)).willReturn(Optional.of(product));
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
 
             // when
             var response = productService.getProduct(ownerId, UserRole.OWNER, productId);
@@ -186,7 +186,7 @@ class ProductServiceTest {
             UUID storeId = UUID.randomUUID();
             Product visibleProduct = createProduct(UUID.randomUUID(), storeId, "Americano");
 
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
             given(productRepository.findByStoreIdAndIsHiddenFalse(eq(storeId), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(visibleProduct)));
 
@@ -207,7 +207,7 @@ class ProductServiceTest {
             Product hiddenProduct = createProduct(UUID.randomUUID(), storeId, "Latte");
             hiddenProduct.changeHidden(true);
 
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
             given(productRepository.findByStoreId(eq(storeId), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(hiddenProduct)));
 
@@ -226,7 +226,7 @@ class ProductServiceTest {
             // given
             UUID storeId = UUID.randomUUID();
 
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
             given(productRepository.findByStoreId(eq(storeId), any(Pageable.class)))
                     .willReturn(Page.empty());
 
@@ -248,7 +248,7 @@ class ProductServiceTest {
             UUID storeId = UUID.randomUUID();
             Product visibleProduct = createProduct(UUID.randomUUID(), storeId, "Americano");
 
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
             given(productRepository.findByStoreIdAndIsHiddenFalseAndProductNameContainingIgnoreCase(
                     eq(storeId), eq("Ameri"), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(visibleProduct)));
@@ -271,7 +271,7 @@ class ProductServiceTest {
             Product hiddenProduct = createProduct(UUID.randomUUID(), storeId, "Latte");
             hiddenProduct.changeHidden(true);
 
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
             given(productRepository.findByStoreIdAndProductNameContainingIgnoreCase(
                     eq(storeId), eq("Lat"), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(hiddenProduct)));
@@ -292,7 +292,7 @@ class ProductServiceTest {
             // given
             UUID storeId = UUID.randomUUID();
 
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, 1L)));
             given(productRepository.findByStoreId(eq(storeId), any(Pageable.class)))
                     .willReturn(Page.empty());
 
@@ -321,7 +321,7 @@ class ProductServiceTest {
             ProductUpdateRequest request = new ProductUpdateRequest("Latte", 5500, "milk coffee", 2);
 
             given(productRepository.findByProductId(productId)).willReturn(Optional.of(product));
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
             given(productRepository.existsByStoreIdAndProductName(storeId, "Latte")).willReturn(false);
 
             // when
@@ -344,7 +344,7 @@ class ProductServiceTest {
             ProductUpdateRequest request = new ProductUpdateRequest("Latte", 5500, null, 2);
 
             given(productRepository.findByProductId(productId)).willReturn(Optional.of(product));
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
             given(productRepository.existsByStoreIdAndProductName(storeId, "Latte")).willReturn(true);
 
             // when & then
@@ -367,7 +367,7 @@ class ProductServiceTest {
             Product product = createProduct(productId, storeId, "Americano");
 
             given(productRepository.findByProductId(productId)).willReturn(Optional.of(product));
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
 
             // when
             var response = productService.changeHidden(ownerId, UserRole.OWNER, productId, new ProductHiddenUpdateRequest(true));
@@ -386,7 +386,7 @@ class ProductServiceTest {
             Product product = createProduct(productId, storeId, "Americano");
 
             given(productRepository.findByProductId(productId)).willReturn(Optional.of(product));
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
 
             // when
             var response = productService.changeSoldOut(ownerId, UserRole.OWNER, productId, new ProductSoldOutUpdateRequest(true));
@@ -405,7 +405,7 @@ class ProductServiceTest {
             Product product = createProduct(productId, storeId, "Americano");
 
             given(productRepository.findByProductId(productId)).willReturn(Optional.of(product));
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(createStore(storeId, ownerId)));
 
             // when
             productService.delete(ownerId, UserRole.OWNER, productId);
