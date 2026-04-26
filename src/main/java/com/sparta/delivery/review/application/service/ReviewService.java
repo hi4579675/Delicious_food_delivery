@@ -99,7 +99,7 @@ public class ReviewService {
                 normalizedSize,
                 Sort.by(parseDirection(direction), normalizedSortBy)
         );
-        Page<ReviewResponse> pageResult = reviewRepository.findByStoreIdAndDeletedAtIsNull(storeId, pageable)
+        Page<ReviewResponse> pageResult = reviewRepository.findByStoreId(storeId, pageable)
                 .map(ReviewResponse::from);
 
         return PageResponse.from(pageResult);
@@ -108,7 +108,7 @@ public class ReviewService {
     @Transactional
     public ReviewResponse update(Long actorId, UUID reviewId, UserRole actorRole, ReviewUpdateRequest request) {
 
-        Review review = reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)
+        Review review = reviewRepository.findByReviewId(reviewId)
                 .orElseThrow(ReviewNotFoundException::new);
         if (!review.getUserId().equals(actorId)) {
             throw new ReviewForbiddenException();
@@ -126,7 +126,7 @@ public class ReviewService {
     @Transactional
     public void delete(Long actorId, UUID reviewId, UserRole actorRole) {
 
-        Review review = reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)
+        Review review = reviewRepository.findByReviewId(reviewId)
                 .orElseThrow(ReviewNotFoundException::new);
 
         if (!review.getUserId().equals(actorId)) {

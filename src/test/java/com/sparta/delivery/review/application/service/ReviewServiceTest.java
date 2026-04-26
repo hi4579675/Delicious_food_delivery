@@ -236,7 +236,7 @@ class ReviewServiceTest {
             UUID storeId = UUID.randomUUID();
             Review review = createReview(UUID.randomUUID(), UUID.randomUUID(), storeId, 1L, 5, "great");
 
-            given(reviewRepository.findByStoreIdAndDeletedAtIsNull(any(UUID.class), any(Pageable.class)))
+            given(reviewRepository.findByStoreId(any(UUID.class), any(Pageable.class)))
                     .willReturn(new PageImpl<>(
                             List.of(review),
                             PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt")),
@@ -248,7 +248,7 @@ class ReviewServiceTest {
 
             // then
             ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-            then(reviewRepository).should().findByStoreIdAndDeletedAtIsNull(any(UUID.class), pageableCaptor.capture());
+            then(reviewRepository).should().findByStoreId(any(UUID.class), pageableCaptor.capture());
 
             Pageable pageable = pageableCaptor.getValue();
             assertThat(pageable.getPageNumber()).isEqualTo(0);
@@ -266,7 +266,7 @@ class ReviewServiceTest {
         void getReviews_success_withRequestedSorting() {
             // given
             UUID storeId = UUID.randomUUID();
-            given(reviewRepository.findByStoreIdAndDeletedAtIsNull(any(UUID.class), any(Pageable.class)))
+            given(reviewRepository.findByStoreId(any(UUID.class), any(Pageable.class)))
                     .willReturn(Page.empty());
 
             // when
@@ -274,7 +274,7 @@ class ReviewServiceTest {
 
             // then
             ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-            then(reviewRepository).should().findByStoreIdAndDeletedAtIsNull(any(UUID.class), pageableCaptor.capture());
+            then(reviewRepository).should().findByStoreId(any(UUID.class), pageableCaptor.capture());
 
             Pageable pageable = pageableCaptor.getValue();
             assertThat(pageable.getPageNumber()).isEqualTo(2);
@@ -297,7 +297,7 @@ class ReviewServiceTest {
             Review review = createReview(reviewId, UUID.randomUUID(), UUID.randomUUID(), actorId, 3, "old");
             ReviewUpdateRequest request = new ReviewUpdateRequest(5, "  new content  ");
 
-            given(reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)).willReturn(Optional.of(review));
+            given(reviewRepository.findByReviewId(reviewId)).willReturn(Optional.of(review));
 
             // when
             ReviewResponse response = reviewService.update(actorId, reviewId, UserRole.CUSTOMER, request);
@@ -313,7 +313,7 @@ class ReviewServiceTest {
             // given
             UUID reviewId = UUID.randomUUID();
             ReviewUpdateRequest request = new ReviewUpdateRequest(5, "new");
-            given(reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)).willReturn(Optional.empty());
+            given(reviewRepository.findByReviewId(reviewId)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> reviewService.update(1L, reviewId, UserRole.CUSTOMER, request))
@@ -327,7 +327,7 @@ class ReviewServiceTest {
             UUID reviewId = UUID.randomUUID();
             Review review = createReview(reviewId, UUID.randomUUID(), UUID.randomUUID(), 2L, 3, "old");
             ReviewUpdateRequest request = new ReviewUpdateRequest(5, "new");
-            given(reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)).willReturn(Optional.of(review));
+            given(reviewRepository.findByReviewId(reviewId)).willReturn(Optional.of(review));
 
             // when & then
             assertThatThrownBy(() -> reviewService.update(1L, reviewId, UserRole.CUSTOMER, request))
@@ -342,7 +342,7 @@ class ReviewServiceTest {
             UUID reviewId = UUID.randomUUID();
             Review review = createReview(reviewId, UUID.randomUUID(), UUID.randomUUID(), actorId, 3, "old");
             ReviewUpdateRequest request = new ReviewUpdateRequest(5, "new");
-            given(reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)).willReturn(Optional.of(review));
+            given(reviewRepository.findByReviewId(reviewId)).willReturn(Optional.of(review));
 
             // when & then
             assertThatThrownBy(() -> reviewService.update(actorId, reviewId, UserRole.OWNER, request))
@@ -361,7 +361,7 @@ class ReviewServiceTest {
             Long actorId = 1L;
             UUID reviewId = UUID.randomUUID();
             Review review = createReview(reviewId, UUID.randomUUID(), UUID.randomUUID(), actorId, 4, "good");
-            given(reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)).willReturn(Optional.of(review));
+            given(reviewRepository.findByReviewId(reviewId)).willReturn(Optional.of(review));
 
             // when
             reviewService.delete(actorId, reviewId, UserRole.CUSTOMER);
@@ -376,7 +376,7 @@ class ReviewServiceTest {
         void delete_fail_whenNotFound() {
             // given
             UUID reviewId = UUID.randomUUID();
-            given(reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)).willReturn(Optional.empty());
+            given(reviewRepository.findByReviewId(reviewId)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> reviewService.delete(1L, reviewId, UserRole.CUSTOMER))
@@ -389,7 +389,7 @@ class ReviewServiceTest {
             // given
             UUID reviewId = UUID.randomUUID();
             Review review = createReview(reviewId, UUID.randomUUID(), UUID.randomUUID(), 2L, 4, "good");
-            given(reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)).willReturn(Optional.of(review));
+            given(reviewRepository.findByReviewId(reviewId)).willReturn(Optional.of(review));
 
             // when & then
             assertThatThrownBy(() -> reviewService.delete(1L, reviewId, UserRole.CUSTOMER))
@@ -403,7 +403,7 @@ class ReviewServiceTest {
             Long actorId = 1L;
             UUID reviewId = UUID.randomUUID();
             Review review = createReview(reviewId, UUID.randomUUID(), UUID.randomUUID(), actorId, 4, "good");
-            given(reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)).willReturn(Optional.of(review));
+            given(reviewRepository.findByReviewId(reviewId)).willReturn(Optional.of(review));
 
             // when & then
             assertThatThrownBy(() -> reviewService.delete(actorId, reviewId, UserRole.MANAGER))
