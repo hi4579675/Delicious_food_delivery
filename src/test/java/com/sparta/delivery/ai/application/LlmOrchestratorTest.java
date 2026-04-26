@@ -8,10 +8,23 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sparta.delivery.ai.domain.entity.Llm;
+import com.sparta.delivery.ai.domain.entity.LlmCall;
+import com.sparta.delivery.ai.domain.entity.LlmProvider;
+import com.sparta.delivery.ai.domain.exception.ActiveLlmNotFoundException;
+import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
+import com.sparta.delivery.ai.domain.exception.LlmInputSnapshotSerializationException;
+import com.sparta.delivery.ai.domain.repository.LlmCallRepository;
+import com.sparta.delivery.ai.domain.repository.LlmRepository;
+import com.sparta.delivery.ai.infrastructure.external.llm.LlmClient;
+import com.sparta.delivery.ai.infrastructure.external.llm.LlmClientRegistry;
+import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
+import com.sparta.delivery.ai.infrastructure.external.llm.LlmInputSnapshot;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -21,17 +34,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import com.sparta.delivery.ai.domain.entity.Llm;
-import com.sparta.delivery.ai.domain.entity.LlmCall;
-import com.sparta.delivery.ai.domain.entity.LlmProvider;
-import com.sparta.delivery.ai.domain.exception.ActiveLlmNotFoundException;
-import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
-import com.sparta.delivery.ai.domain.repository.LlmCallRepository;
-import com.sparta.delivery.ai.domain.repository.LlmRepository;
-import com.sparta.delivery.ai.infrastructure.external.llm.LlmClient;
-import com.sparta.delivery.ai.infrastructure.external.llm.LlmClientRegistry;
-import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
 
 @ExtendWith(MockitoExtension.class)
 class LlmOrchestratorTest {
@@ -48,6 +50,9 @@ class LlmOrchestratorTest {
     @Mock
     private LlmClient llmClient;
 
+    @Mock
+    private ObjectMapper objectMapper;
+
     @InjectMocks
     private LlmOrchestrator llmOrchestrator;
 
@@ -57,15 +62,16 @@ class LlmOrchestratorTest {
 
         @Test
         @DisplayName("generates text with active llm and saves llm call log")
-        void generate_success() {
+        void generate_success() throws Exception {
             // given
             UUID llmId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
             Long actorId = 1L;
-            String prompt = "아메리카노 설명 생성";
+            String prompt = "prompt";
+            String inputSnapshot = "{\"prompt\":\"prompt\"}";
             Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
             LlmGenerateResponse llmGenerateResponse = new LlmGenerateResponse(
-                    "깔끔하고 산뜻한 아메리카노 설명",
+                    "generated text",
                     "{\"result\":\"ok\"}",
                     "200"
             );
@@ -73,6 +79,7 @@ class LlmOrchestratorTest {
             given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
             given(llmClientRegistry.getClient(LlmProvider.OPENAI)).willReturn(llmClient);
             given(llmClient.generate(eq(activeLlm), any())).willReturn(llmGenerateResponse);
+            given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
             given(llmCallRepository.save(any(LlmCall.class))).willAnswer(invocation -> invocation.getArgument(0));
 
             // when
@@ -87,10 +94,10 @@ class LlmOrchestratorTest {
             LlmCall savedCall = llmCallCaptor.getValue();
             assertThat(savedCall.getLlmId()).isEqualTo(llmId);
             assertThat(savedCall.getProductId()).isEqualTo(productId);
-            assertThat(savedCall.getInputSnapshot()).isEqualTo(prompt);
+            assertThat(savedCall.getInputSnapshot()).isEqualTo(inputSnapshot);
             assertThat(savedCall.getProviderStatusCode()).isEqualTo("200");
             assertThat(savedCall.getRawResponse()).isEqualTo("{\"result\":\"ok\"}");
-            assertThat(savedCall.getGeneratedText()).isEqualTo("깔끔하고 산뜻한 아메리카노 설명");
+            assertThat(savedCall.getGeneratedText()).isEqualTo("generated text");
             assertThat(savedCall.getCreatedBy()).isEqualTo(actorId);
             assertThat(savedCall.getCreatedAt()).isNotNull();
         }
@@ -101,7 +108,7 @@ class LlmOrchestratorTest {
             // given
             UUID productId = UUID.randomUUID();
             Long actorId = 1L;
-            String prompt = "아메리카노 설명 생성";
+            String prompt = "prompt";
 
             given(llmRepository.findByIsActiveTrue()).willReturn(Optional.empty());
 
@@ -120,7 +127,7 @@ class LlmOrchestratorTest {
             UUID llmId = UUID.randomUUID();
             UUID productId = UUID.randomUUID();
             Long actorId = 1L;
-            String prompt = "아메리카노 설명 생성";
+            String prompt = "prompt";
             Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
 
             given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
@@ -130,6 +137,34 @@ class LlmOrchestratorTest {
             // when // then
             assertThatThrownBy(() -> llmOrchestrator.generate(productId, actorId, prompt))
                     .isInstanceOf(ExternalLlmCallFailedException.class);
+
+            then(llmCallRepository).should(never()).save(any(LlmCall.class));
+        }
+
+        @Test
+        @DisplayName("throws when input snapshot serialization fails")
+        void generate_fail_whenInputSnapshotSerializationFails() throws Exception {
+            // given
+            UUID llmId = UUID.randomUUID();
+            UUID productId = UUID.randomUUID();
+            Long actorId = 1L;
+            String prompt = "prompt";
+            Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
+            LlmGenerateResponse llmGenerateResponse = new LlmGenerateResponse(
+                    "generated text",
+                    "{\"result\":\"ok\"}",
+                    "200"
+            );
+
+            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
+            given(llmClientRegistry.getClient(LlmProvider.OPENAI)).willReturn(llmClient);
+            given(llmClient.generate(eq(activeLlm), any())).willReturn(llmGenerateResponse);
+            given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class)))
+                    .willThrow(new JsonProcessingException("serialize fail") { });
+
+            // when // then
+            assertThatThrownBy(() -> llmOrchestrator.generate(productId, actorId, prompt))
+                    .isInstanceOf(LlmInputSnapshotSerializationException.class);
 
             then(llmCallRepository).should(never()).save(any(LlmCall.class));
         }
