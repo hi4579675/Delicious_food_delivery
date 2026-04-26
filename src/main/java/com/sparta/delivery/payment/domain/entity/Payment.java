@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import com.sparta.delivery.common.model.BaseEntity;
+import com.sparta.delivery.payment.domain.exception.InvalidPaymentFailureReasonException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderIdException;
 import com.sparta.delivery.payment.domain.exception.InvalidPaymentMethodException;
 import com.sparta.delivery.payment.domain.exception.InvalidPaymentStatusTransitionException;
@@ -59,7 +60,8 @@ public class Payment extends BaseEntity {
     private LocalDateTime cancelledAt;
 
     @Column(length = 255)
-    private String failureReason;
+    @Enumerated(EnumType.STRING)
+    private PaymentFailureReason failureReason;
 
     @Column(length = 50)
     private String pgProvider;
@@ -68,7 +70,7 @@ public class Payment extends BaseEntity {
     private String pgTransactionId;
 
     @Builder(access = AccessLevel.PRIVATE)
-    private Payment(UUID orderId, PaymentMethod paymentMethod, Integer totalPrice, LocalDateTime approvedAt, LocalDateTime failedAt, LocalDateTime cancelledAt, String failureReason, String pgProvider, String pgTransactionId) {
+    private Payment(UUID orderId, PaymentMethod paymentMethod, Integer totalPrice, LocalDateTime approvedAt, LocalDateTime failedAt, LocalDateTime cancelledAt, PaymentFailureReason failureReason, String pgProvider, String pgTransactionId) {
         this.orderId = orderId;
         this.paymentMethod = paymentMethod;
         this.paymentStatus = PaymentStatus.PENDING;
@@ -114,15 +116,18 @@ public class Payment extends BaseEntity {
         this.pgTransactionId = normalizeNullableText(pgTransactionId);
     }
 
-    public void fail(String failureReason) {
+    public void fail(PaymentFailureReason failureReason) {
 
         if(this.paymentStatus != PaymentStatus.PENDING) {
             throw new InvalidPaymentStatusTransitionException();
         }
+        if (failureReason == null) {
+            throw new InvalidPaymentFailureReasonException();
+        }
 
         this.paymentStatus = PaymentStatus.FAILED;
         this.failedAt = LocalDateTime.now();
-        this.failureReason = normalizeNullableText(failureReason);
+        this.failureReason = failureReason;
     }
 
     public void cancel() {

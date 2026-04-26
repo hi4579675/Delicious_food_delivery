@@ -45,7 +45,7 @@ public class Address extends BaseEntity {
     @Column(nullable = false)
     private boolean isDefault;
 
-    @Builder
+    @Builder(access = AccessLevel.PRIVATE)
     private Address(
             Long userId,
             String alias,
