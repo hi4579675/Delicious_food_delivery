@@ -163,9 +163,8 @@ public class ProductService {
 
 
     private Store getStoreOrThrow(UUID storeId) {
-        // TODO: Store 엔티티에 SQLRestriction 반영 즉시 일반 쿼리 메소드로 변경
         // TODO: Store 도메인 예외 구현 즉시 해당 예외로 변경
-        return storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)
+        return storeRepository.findByStoreId(storeId)
                 .orElseThrow(IllegalArgumentException::new);
     }
     private Product getProductOrThrow(UUID productId) {

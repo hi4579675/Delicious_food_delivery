@@ -181,7 +181,7 @@ public class OrderService {
     }
 
     private List<UUID> findOwnedStoreIds(Long actorId) {
-        return storeRepository.findByUserIdAndDeletedAtIsNull(actorId).stream()
+        return storeRepository.findByUserId(actorId).stream()
                 .map(Store::getStoreId)
                 .toList();
     }
@@ -209,7 +209,7 @@ public class OrderService {
     }
 
     private Store getOrderableStore(UUID storeId) {
-        Store store = storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)
+        Store store = storeRepository.findByStoreId(storeId)
                 .orElseThrow(StoreNotFoundException::new);
         if (!Boolean.TRUE.equals(store.getIsOpen()) || !Boolean.TRUE.equals(store.getIsActive())) {
             throw new StoreNotOrderableException();
@@ -339,7 +339,7 @@ public class OrderService {
     }
 
     private boolean isOwnedStore(Long actorId, UUID storeId) {
-        Store store = storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)
+        Store store = storeRepository.findByStoreId(storeId)
                 .orElseThrow(StoreNotFoundException::new);
         return store.getUserId().equals(actorId);
     }

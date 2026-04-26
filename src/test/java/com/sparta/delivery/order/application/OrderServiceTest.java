@@ -84,7 +84,7 @@ class OrderServiceTest {
             );
 
             given(addressService.findOwnedAddress(userId, addressId)).willReturn(address);
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(store));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
             given(productRepository.findByProductId(productId)).willReturn(Optional.of(product));
             given(orderRepository.save(any(Order.class))).willAnswer(invocation -> {
                 Order order = invocation.getArgument(0);
@@ -125,7 +125,7 @@ class OrderServiceTest {
             );
 
             given(addressService.findOwnedAddress(userId, addressId)).willReturn(address);
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(store));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
             given(productRepository.findByProductId(productId)).willReturn(Optional.of(product));
 
             // when // then
@@ -154,7 +154,7 @@ class OrderServiceTest {
             );
 
             given(addressService.findOwnedAddress(userId, addressId)).willReturn(address);
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(store));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
             given(productRepository.findByProductId(productId)).willReturn(Optional.of(product));
 
             // when // then
@@ -201,7 +201,7 @@ class OrderServiceTest {
             Order order = createOrder(UUID.randomUUID(), 2L, storeId, UUID.randomUUID(), 18000);
             Pageable pageable = PageRequest.of(0, 10);
 
-            given(storeRepository.findByUserIdAndDeletedAtIsNull(actorId))
+            given(storeRepository.findByUserId(actorId))
                     .willReturn(List.of(createStore(storeId, actorId, 10000, true, true)));
             given(orderRepository.findAllByStoreIdIn(eq(List.of(storeId)), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(order), pageable, 1));
@@ -285,7 +285,7 @@ class OrderServiceTest {
             Store store = createStore(storeId, actorId, 10000, true, true);
 
             given(orderRepository.findById(orderId)).willReturn(Optional.of(order));
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(store));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
 
             // when
             var response = orderService.getOrder(actorId, UserRole.OWNER, orderId);
@@ -366,7 +366,7 @@ class OrderServiceTest {
             Store store = createStore(storeId, actorId, 10000, true, true);
 
             given(orderRepository.findById(orderId)).willReturn(Optional.of(order));
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(store));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
 
             // when
             var response = orderService.updateStatus(actorId, UserRole.OWNER, orderId, OrderStatus.ACCEPTED);
@@ -393,7 +393,7 @@ class OrderServiceTest {
             // then
             assertThat(response.status()).isEqualTo(OrderStatus.ACCEPTED);
             assertThat(order.getStatus()).isEqualTo(OrderStatus.ACCEPTED);
-            verify(storeRepository, never()).findByStoreIdAndDeletedAtIsNull(any(UUID.class));
+            verify(storeRepository, never()).findByStoreId(any(UUID.class));
         }
 
         @Test
@@ -407,7 +407,7 @@ class OrderServiceTest {
             Store store = createStore(storeId, 3L, 10000, true, true);
 
             given(orderRepository.findById(orderId)).willReturn(Optional.of(order));
-            given(storeRepository.findByStoreIdAndDeletedAtIsNull(storeId)).willReturn(Optional.of(store));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
 
             // when // then
             assertThatThrownBy(() -> orderService.updateStatus(actorId, UserRole.OWNER, orderId, OrderStatus.ACCEPTED))
