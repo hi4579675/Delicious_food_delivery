@@ -27,6 +27,7 @@ import com.sparta.delivery.review.domain.exception.ReviewForbiddenException;
 import com.sparta.delivery.review.domain.exception.ReviewNotFoundException;
 import com.sparta.delivery.review.domain.repository.ReviewRepository;
 import com.sparta.delivery.review.presentation.dto.request.ReviewCreateRequest;
+import com.sparta.delivery.review.presentation.dto.request.ReviewUpdateRequest;
 import com.sparta.delivery.review.presentation.dto.response.ReviewResponse;
 import com.sparta.delivery.user.domain.entity.UserRole;
 
@@ -52,7 +53,7 @@ public class ReviewService {
             throw new ReviewForbiddenException();
         }
 
-        if (actorRole != UserRole.CUSTOMER) {
+        if(actorRole != UserRole.CUSTOMER) {
             throw new ReviewForbiddenException();
         }
 
@@ -65,7 +66,7 @@ public class ReviewService {
         }
 
         Review saved = Review.create(order.getOrderId(), order.getStoreId(), actorId, request.rating(),
-                request.content());
+                        request.content());
 
         try {
             log.info("리뷰 생성 완료 - actorId={}, orderId={}", actorId, order.getOrderId());
@@ -82,7 +83,7 @@ public class ReviewService {
         return ReviewResponse.from(review);
     }
 
-    public PageResponse<ReviewResponse> getReviews(
+    public PageResponse<ReviewResponse> getReviews (
             UUID storeId,
             int page,
             int size,
@@ -102,6 +103,42 @@ public class ReviewService {
                 .map(ReviewResponse::from);
 
         return PageResponse.from(pageResult);
+    }
+
+    @Transactional
+    public ReviewResponse update(Long actorId, UUID reviewId, UserRole actorRole, ReviewUpdateRequest request) {
+
+        Review review = reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)
+                .orElseThrow(ReviewNotFoundException::new);
+        if (!review.getUserId().equals(actorId)) {
+            throw new ReviewForbiddenException();
+        }
+        if (actorRole != UserRole.CUSTOMER) {
+            throw new ReviewForbiddenException();
+        }
+
+        review.update(request.rating(), request.content());
+
+        log.info("리뷰 수정 완료 -  actorId={}, reviewId={}", actorId, reviewId);
+        return ReviewResponse.from(review);
+    }
+
+    @Transactional
+    public void delete(Long actorId, UUID reviewId, UserRole actorRole) {
+
+        Review review = reviewRepository.findByReviewIdAndDeletedAtIsNull(reviewId)
+                .orElseThrow(ReviewNotFoundException::new);
+
+        if (!review.getUserId().equals(actorId)) {
+            throw new ReviewForbiddenException();
+        }
+        if (actorRole != UserRole.CUSTOMER) {
+            throw new ReviewForbiddenException();
+        }
+
+        review.softDelete(actorId);
+        log.info("리뷰 삭제 완료 - actorId={}, reviewId={}", actorId, reviewId);
+
     }
 
     private Sort.Direction parseDirection(String direction) {
