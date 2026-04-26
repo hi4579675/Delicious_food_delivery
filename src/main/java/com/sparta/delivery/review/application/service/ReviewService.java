@@ -1,14 +1,21 @@
 package com.sparta.delivery.review.application.service;
 
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.order.domain.entity.Order;
 import com.sparta.delivery.order.domain.entity.OrderStatus;
 import com.sparta.delivery.order.domain.repository.OrderRepository;
@@ -28,6 +35,10 @@ import com.sparta.delivery.user.domain.entity.UserRole;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ReviewService {
+
+    private static final List<Integer> ALLOWED_PAGE_SIZES = List.of(10, 30, 50);
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "rating");
+    private static final String DEFAULT_SORT_FIELD = "createdAt";
 
     private final ReviewRepository reviewRepository;
     private final OrderRepository orderRepository;
@@ -69,6 +80,40 @@ public class ReviewService {
                 .orElseThrow(ReviewNotFoundException::new);
 
         return ReviewResponse.from(review);
+    }
+
+    public PageResponse<ReviewResponse> getReviews(
+            UUID storeId,
+            int page,
+            int size,
+            String sortBy,
+            String direction
+    ) {
+        int normalizedPage = Math.max(0, page);
+        int normalizedSize = normalizeSize(size);
+        String normalizedSortBy = normalizeSortBy(sortBy);
+
+        Pageable pageable = PageRequest.of(
+                normalizedPage,
+                normalizedSize,
+                Sort.by(parseDirection(direction), normalizedSortBy)
+        );
+        Page<ReviewResponse> pageResult = reviewRepository.findByStoreIdAndDeletedAtIsNull(storeId, pageable)
+                .map(ReviewResponse::from);
+
+        return PageResponse.from(pageResult);
+    }
+
+    private Sort.Direction parseDirection(String direction) {
+        return "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+    }
+
+    private int normalizeSize(int size) {
+        return ALLOWED_PAGE_SIZES.contains(size) ? size : 10;
+    }
+
+    private String normalizeSortBy(String sortBy) {
+        return ALLOWED_SORT_FIELDS.contains(sortBy) ? sortBy : DEFAULT_SORT_FIELD;
     }
 
 }
