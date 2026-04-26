@@ -36,7 +36,7 @@ public class OpenAiClient implements LlmClient {
 
             return new LlmGenerateResponse(
                     content,
-                    content,
+                    null,
                     "200"
             );
         } catch (Exception e) {
