@@ -96,7 +96,7 @@
 
 ### 민감 정보 (운영 환경변수)
 
-`DB_PASSWORD`, `JWT_SECRET`, `GEMINI_API_KEY`, `REDIS_PASSWORD`는 **환경 변수로만** 주입.
+`DB_PASSWORD`, `JWT_SECRET`, `OPENAI_API_KEY`, `REDIS_PASSWORD`는 **환경 변수로만** 주입.
 - 코드/Git 하드코딩 금지
 - 구체적 전달 경로(GitHub Secrets → EC2)는 [배포 파이프라인 #Secrets 관리](./deployment.md#4-secrets-관리) 참고
 
@@ -133,7 +133,7 @@ Backend(Spring Boot) 컨테이너는 운영 배포 시 추가 예정 — [배포
 
 - **연결 위치**: 코드 상 `ai/infrastructure/external/gemini/GeminiClient` ([패키지·계층 구조 가이드](../architecture/package-structure.md) 참고)
 - **네트워크**: EC2 → 인터넷 → Gemini API (아웃바운드 허용)
-- **키 관리**: `GEMINI_API_KEY` 환경변수
+- **키 관리**: `OPENAI_API_KEY` 환경변수
 - **운영 동작**(timeout / 에러 처리 / 입력 한도 등): [배포 파이프라인 #외부 API 운영 동작](./deployment.md#6-외부-api-운영-동작) 참고
 
 ---

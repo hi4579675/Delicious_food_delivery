@@ -28,7 +28,7 @@ jwt:
 
 ai:
   gemini:
-    api-key: ${GEMINI_API_KEY:dummy-key}
+    api-key: ${OPENAI_API_KEY:dummy-key}
     max-input-length: 500
 
 ---

@@ -140,7 +140,7 @@ backend:
     REDIS_HOST: redis
     REDIS_PASSWORD: ${REDIS_PASSWORD}
     JWT_SECRET: ${JWT_SECRET}
-    GEMINI_API_KEY: ${GEMINI_API_KEY}
+    OPENAI_API_KEY: ${OPENAI_API_KEY}
 ```
 
 ---
@@ -154,7 +154,7 @@ backend:
  ├── EC2_SSH_KEY, EC2_HOST           ← Actions가 SSH 접속 시 사용
  ├── DB_PASSWORD, REDIS_PASSWORD      ← .env로 EC2에 전달
  ├── JWT_SECRET                       ← 동일
- └── GEMINI_API_KEY                   ← 동일
+ └── OPENAI_API_KEY                   ← 동일
         │
         ▼ (Actions가 SSH로 .env 업로드 또는 환경변수 주입)
 [EC2]
@@ -170,7 +170,7 @@ POSTGRES_USER=delivery
 POSTGRES_PASSWORD=changeme
 REDIS_PASSWORD=changeme
 JWT_SECRET=your-256-bit-secret-key-here
-GEMINI_API_KEY=your-gemini-api-key
+OPENAI_API_KEY=your-openai-api-key
 ```
 
 `.env`는 Git 커밋 금지.
