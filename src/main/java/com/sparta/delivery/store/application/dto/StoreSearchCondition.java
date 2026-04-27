@@ -1,4 +1,4 @@
-package com.sparta.delivery.store.presentation.dto;
+package com.sparta.delivery.store.application.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

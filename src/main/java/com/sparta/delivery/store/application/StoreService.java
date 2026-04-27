@@ -3,6 +3,7 @@ package com.sparta.delivery.store.application;
 import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.region.domain.entity.Region;
 import com.sparta.delivery.region.domain.repository.RegionRepository;
+import com.sparta.delivery.store.application.dto.StoreSearchCondition;
 import com.sparta.delivery.store.domain.entity.Store;
 import com.sparta.delivery.store.domain.entity.StoreCategory;
 import com.sparta.delivery.store.domain.exception.InactiveStoreCategoryException;
@@ -16,7 +17,6 @@ import com.sparta.delivery.store.domain.repository.StoreCategoryRepository;
 import com.sparta.delivery.store.domain.repository.StoreRepository;
 import com.sparta.delivery.store.presentation.dto.StoreCreateRequest;
 import com.sparta.delivery.store.presentation.dto.StoreResponse;
-import com.sparta.delivery.store.presentation.dto.StoreSearchCondition;
 import com.sparta.delivery.store.presentation.dto.StoreUpdateRequest;
 import com.sparta.delivery.user.domain.entity.UserRole;
 
