@@ -9,6 +9,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import com.sparta.delivery.ai.application.AiDescriptionService;
 import com.sparta.delivery.product.domain.entity.DescriptionSource;
 import com.sparta.delivery.product.domain.entity.Product;
 import com.sparta.delivery.product.domain.exception.DuplicateProductNameException;
@@ -49,6 +50,9 @@ class ProductServiceTest {
     @Mock
     private StoreRepository storeRepository;
 
+    @Mock
+    private AiDescriptionService aiDescriptionService;
+
     @InjectMocks
     private ProductService productService;
 
@@ -63,7 +67,7 @@ class ProductServiceTest {
             Long ownerId = 1L;
             UUID storeId = UUID.randomUUID();
             Store store = createStore(storeId, ownerId);
-            ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, "coffee", 1);
+            ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, "coffee", 1, false, null);
 
             given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
             given(productRepository.existsByStoreIdAndProductName(storeId, "Americano")).willReturn(false);
@@ -90,7 +94,7 @@ class ProductServiceTest {
             Long actorId = 2L;
             UUID storeId = UUID.randomUUID();
             Store store = createStore(storeId, 1L);
-            ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, null, 1);
+            ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, null, 1, false, null);
 
             given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
 
@@ -107,7 +111,7 @@ class ProductServiceTest {
             Long ownerId = 1L;
             UUID storeId = UUID.randomUUID();
             Store store = createStore(storeId, ownerId);
-            ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, null, 1);
+            ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, null, 1, false, null);
 
             given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
             given(productRepository.existsByStoreIdAndProductName(storeId, "Americano")).willReturn(true);

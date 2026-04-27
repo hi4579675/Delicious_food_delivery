@@ -28,9 +28,11 @@ public class LlmOrchestrator {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public LlmGenerateResponse generate(UUID productId, Long actorId, String prompt) {
+    public LlmGenerateResponse generate(Long actorId, String prompt) {
         Llm activeLlm = llmRepository.findByIsActiveTrue()
                 .orElseThrow(ActiveLlmNotFoundException::new);
+
+        String inputSnapshot = createJsonInputSnapshot(prompt);
 
         LlmClient client = llmClientRegistry.getClient(activeLlm.getProvider());
 
@@ -39,11 +41,8 @@ public class LlmOrchestrator {
                 new LlmGenerateRequest(prompt)
         );
 
-        String inputSnapshot = createJsonInputSnapshot(prompt);
-
         LlmCall llmCall = LlmCall.create(
                 activeLlm.getLlmId(),
-                productId,
                 // TODO: Product 연계 시 inputSnapshot을 구조화된 요청 값으로 확장
                 inputSnapshot,
                 response.providerStatusCode(),

@@ -1,17 +1,16 @@
 package com.sparta.delivery.ai.domain.entity;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+
 import com.sparta.delivery.ai.domain.exception.AiErrorCode;
 import com.sparta.delivery.ai.domain.exception.InvalidCreatedByException;
 import com.sparta.delivery.ai.domain.exception.InvalidInputSnapshotException;
 import com.sparta.delivery.ai.domain.exception.InvalidProviderStatusCodeException;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 class LlmCallTest {
 
@@ -20,11 +19,10 @@ class LlmCallTest {
     void create_shouldCreateLlmCallSuccessfully() {
         // given
         UUID llmId = UUID.randomUUID();
-        UUID productId = UUID.randomUUID();
         String inputSnapshot = "{\"productName\":\"Americano\",\"price\":4500}";
         String providerStatusCode = "200";
         String rawResponse = "{\"result\":\"ok\"}";
-        String generatedText = "깔끔한 커피 설명";
+        String generatedText = "generated text";
         Long createdBy = 1L;
 
         LocalDateTime before = LocalDateTime.now();
@@ -32,7 +30,6 @@ class LlmCallTest {
         // when
         LlmCall llmCall = LlmCall.create(
                 llmId,
-                productId,
                 inputSnapshot,
                 providerStatusCode,
                 rawResponse,
@@ -44,7 +41,7 @@ class LlmCallTest {
 
         // then
         assertThat(llmCall.getLlmId()).isEqualTo(llmId);
-        assertThat(llmCall.getProductId()).isEqualTo(productId);
+        assertThat(llmCall.getProductId()).isNull();
         assertThat(llmCall.getInputSnapshot()).isEqualTo(inputSnapshot);
         assertThat(llmCall.getProviderStatusCode()).isEqualTo(providerStatusCode);
         assertThat(llmCall.getRawResponse()).isEqualTo(rawResponse);
@@ -59,7 +56,6 @@ class LlmCallTest {
     void create_shouldThrow_whenInputSnapshotIsBlank() {
         // when
         Throwable thrown = catchThrowable(() -> LlmCall.create(
-                UUID.randomUUID(),
                 UUID.randomUUID(),
                 "   ",
                 "200",
@@ -80,7 +76,6 @@ class LlmCallTest {
         // when
         Throwable thrown = catchThrowable(() -> LlmCall.create(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
                 "{\"productName\":\"Americano\"}",
                 "1".repeat(51),
                 "{}",
@@ -99,7 +94,6 @@ class LlmCallTest {
     void create_shouldThrow_whenCreatedByIsNull() {
         // when
         Throwable thrown = catchThrowable(() -> LlmCall.create(
-                UUID.randomUUID(),
                 UUID.randomUUID(),
                 "{\"productName\":\"Americano\"}",
                 "200",

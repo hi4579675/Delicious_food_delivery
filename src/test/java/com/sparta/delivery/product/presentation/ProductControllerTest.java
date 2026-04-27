@@ -73,7 +73,7 @@ class ProductControllerTest {
         void createProduct_success() throws Exception {
             // given
             UUID storeId = UUID.randomUUID();
-            ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, "coffee", 1);
+            ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, "coffee", 1, false, null);
             ProductResponse response = productResponse(UUID.randomUUID(), storeId, "Americano", false, false);
             UsernamePasswordAuthenticationToken auth = authenticationToken(UserRole.OWNER);
 
@@ -104,7 +104,7 @@ class ProductControllerTest {
         void createProduct_fail_whenProductNameBlank() throws Exception {
             // given
             UUID storeId = UUID.randomUUID();
-            ProductCreateRequest request = new ProductCreateRequest("", 4500, null, 1);
+            ProductCreateRequest request = new ProductCreateRequest("", 4500, null, 1, false, null);
             UsernamePasswordAuthenticationToken auth = authenticationToken(UserRole.OWNER);
 
             // when & then

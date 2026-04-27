@@ -65,7 +65,6 @@ class LlmOrchestratorTest {
         void generate_success() throws Exception {
             // given
             UUID llmId = UUID.randomUUID();
-            UUID productId = UUID.randomUUID();
             Long actorId = 1L;
             String prompt = "prompt";
             String inputSnapshot = "{\"prompt\":\"prompt\"}";
@@ -77,13 +76,13 @@ class LlmOrchestratorTest {
             );
 
             given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
+            given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
             given(llmClientRegistry.getClient(LlmProvider.OPENAI)).willReturn(llmClient);
             given(llmClient.generate(eq(activeLlm), any())).willReturn(llmGenerateResponse);
-            given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
             given(llmCallRepository.save(any(LlmCall.class))).willAnswer(invocation -> invocation.getArgument(0));
 
             // when
-            LlmGenerateResponse response = llmOrchestrator.generate(productId, actorId, prompt);
+            LlmGenerateResponse response = llmOrchestrator.generate(actorId, prompt);
 
             // then
             assertThat(response).isEqualTo(llmGenerateResponse);
@@ -93,7 +92,7 @@ class LlmOrchestratorTest {
 
             LlmCall savedCall = llmCallCaptor.getValue();
             assertThat(savedCall.getLlmId()).isEqualTo(llmId);
-            assertThat(savedCall.getProductId()).isEqualTo(productId);
+            assertThat(savedCall.getProductId()).isNull();
             assertThat(savedCall.getInputSnapshot()).isEqualTo(inputSnapshot);
             assertThat(savedCall.getProviderStatusCode()).isEqualTo("200");
             assertThat(savedCall.getRawResponse()).isEqualTo("{\"result\":\"ok\"}");
@@ -106,14 +105,13 @@ class LlmOrchestratorTest {
         @DisplayName("throws when active llm does not exist")
         void generate_fail_whenActiveLlmNotFound() {
             // given
-            UUID productId = UUID.randomUUID();
             Long actorId = 1L;
             String prompt = "prompt";
 
             given(llmRepository.findByIsActiveTrue()).willReturn(Optional.empty());
 
             // when // then
-            assertThatThrownBy(() -> llmOrchestrator.generate(productId, actorId, prompt))
+            assertThatThrownBy(() -> llmOrchestrator.generate(actorId, prompt))
                     .isInstanceOf(ActiveLlmNotFoundException.class);
 
             then(llmClientRegistry).shouldHaveNoInteractions();
@@ -122,20 +120,21 @@ class LlmOrchestratorTest {
 
         @Test
         @DisplayName("does not save llm call log when external llm call fails")
-        void generate_fail_whenExternalLlmCallFails() {
+        void generate_fail_whenExternalLlmCallFails() throws Exception {
             // given
             UUID llmId = UUID.randomUUID();
-            UUID productId = UUID.randomUUID();
             Long actorId = 1L;
             String prompt = "prompt";
+            String inputSnapshot = "{\"prompt\":\"prompt\"}";
             Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
 
             given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
+            given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
             given(llmClientRegistry.getClient(LlmProvider.OPENAI)).willReturn(llmClient);
             given(llmClient.generate(eq(activeLlm), any())).willThrow(new ExternalLlmCallFailedException());
 
             // when // then
-            assertThatThrownBy(() -> llmOrchestrator.generate(productId, actorId, prompt))
+            assertThatThrownBy(() -> llmOrchestrator.generate(actorId, prompt))
                     .isInstanceOf(ExternalLlmCallFailedException.class);
 
             then(llmCallRepository).should(never()).save(any(LlmCall.class));
@@ -146,27 +145,20 @@ class LlmOrchestratorTest {
         void generate_fail_whenInputSnapshotSerializationFails() throws Exception {
             // given
             UUID llmId = UUID.randomUUID();
-            UUID productId = UUID.randomUUID();
             Long actorId = 1L;
             String prompt = "prompt";
             Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
-            LlmGenerateResponse llmGenerateResponse = new LlmGenerateResponse(
-                    "generated text",
-                    "{\"result\":\"ok\"}",
-                    "200"
-            );
 
             given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
-            given(llmClientRegistry.getClient(LlmProvider.OPENAI)).willReturn(llmClient);
-            given(llmClient.generate(eq(activeLlm), any())).willReturn(llmGenerateResponse);
             given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class)))
                     .willThrow(new JsonProcessingException("serialize fail") { });
 
             // when // then
-            assertThatThrownBy(() -> llmOrchestrator.generate(productId, actorId, prompt))
+            assertThatThrownBy(() -> llmOrchestrator.generate(actorId, prompt))
                     .isInstanceOf(LlmInputSnapshotSerializationException.class);
 
-            then(llmCallRepository).should(never()).save(any(LlmCall.class));
+            then(llmClientRegistry).shouldHaveNoInteractions();
+            then(llmCallRepository).shouldHaveNoInteractions();
         }
     }
 

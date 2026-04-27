@@ -114,7 +114,6 @@ class LlmCallServiceTest {
     private LlmCall createLlmCall(UUID callId) {
         LlmCall llmCall = LlmCall.create(
                 UUID.randomUUID(),
-                UUID.randomUUID(),
                 "{\"productName\":\"Americano\"}",
                 "200",
                 "{\"result\":\"ok\"}",

@@ -26,7 +26,7 @@ public class LlmCall {
     @Column(name = "llm_id", nullable = false)
     private UUID llmId;
 
-    @Column(name = "product_id", nullable = false)
+    @Column(name = "product_id")
     private UUID productId;
 
     @Column(name = "input_snapshot", nullable = false, columnDefinition = "jsonb")
@@ -50,7 +50,6 @@ public class LlmCall {
     @Builder(access = AccessLevel.PRIVATE)
     private LlmCall(
             UUID llmId,
-            UUID productId,
             String inputSnapshot,
             String providerStatusCode,
             String rawResponse,
@@ -59,7 +58,6 @@ public class LlmCall {
             Long createdBy
     ) {
         this.llmId = llmId;
-        this.productId = productId;
         this.inputSnapshot = inputSnapshot;
         this.providerStatusCode = providerStatusCode;
         this.rawResponse = rawResponse;
@@ -70,7 +68,6 @@ public class LlmCall {
 
     public static LlmCall create(
             UUID llmId,
-            UUID productId,
             String inputSnapshot,
             String providerStatusCode,
             String rawResponse,
@@ -83,7 +80,6 @@ public class LlmCall {
 
         return LlmCall.builder()
                 .llmId(llmId)
-                .productId(productId)
                 .inputSnapshot(inputSnapshot)
                 .providerStatusCode(providerStatusCode)
                 .rawResponse(rawResponse)

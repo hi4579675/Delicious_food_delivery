@@ -42,13 +42,10 @@ public class ProductService {
         validateProductWritePermission(actorId, actorRole, store);
         validateDuplicateProductName(storeId, request.productName());
 
-        UUID productId = UUID.randomUUID();
-
-        String description = resolveDescription(productId, actorId, request);
+        String description = resolveDescription(actorId, request);
         DescriptionSource descriptionSource = resolveDescriptionSource(request, description);
 
         Product product = createProduct(
-                productId,
                 storeId,
                 request,
                 description,
@@ -211,7 +208,6 @@ public class ProductService {
     }
 
     private Product createProduct(
-            UUID productId,
             UUID storeId,
             ProductCreateRequest request,
             String description,
@@ -278,10 +274,9 @@ public class ProductService {
         return keyword.trim();
     }
 
-    private String resolveDescription(UUID productId, Long actorId, ProductCreateRequest request) {
+    private String resolveDescription(Long actorId, ProductCreateRequest request) {
         if (request.shouldGenerateDescription()) {
             return aiDescriptionService.generateDescription(
-                    productId,
                     actorId,
                     request.productName(),
                     request.price(),
