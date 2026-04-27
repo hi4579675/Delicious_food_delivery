@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.never;
 import static org.mockito.BDDMockito.then;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.region.domain.entity.Region;
 import com.sparta.delivery.region.domain.exception.DuplicateRegionCodeException;
 import com.sparta.delivery.region.domain.exception.InvalidParentRegionException;
@@ -26,6 +27,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class RegionServiceTest {
@@ -52,7 +56,7 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.existsByRegionCode("1100000000")).willReturn(false);
+            given(regionRepository.existsByRegionCodeIncludingDeleted("1100000000")).willReturn(false);
             given(regionRepository.save(any(Region.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -66,7 +70,7 @@ class RegionServiceTest {
             assertThat(response.depth()).isEqualTo(1);
             assertThat(response.isActive()).isTrue();
 
-            then(regionRepository).should().existsByRegionCode("1100000000");
+            then(regionRepository).should().existsByRegionCodeIncludingDeleted("1100000000");
             then(regionRepository).should().save(any(Region.class));
         }
 
@@ -92,7 +96,7 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.existsByRegionCode("1111000000")).willReturn(false);
+            given(regionRepository.existsByRegionCodeIncludingDeleted("1111000000")).willReturn(false);
             given(regionRepository.findByRegionId(parentId)).willReturn(Optional.of(parent));
             given(regionRepository.save(any(Region.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -107,7 +111,7 @@ class RegionServiceTest {
             assertThat(response.depth()).isEqualTo(2);
             assertThat(response.isActive()).isTrue();
 
-            then(regionRepository).should().existsByRegionCode("1111000000");
+            then(regionRepository).should().existsByRegionCodeIncludingDeleted("1111000000");
             then(regionRepository).should().findByRegionId(parentId);
             then(regionRepository).should().save(any(Region.class));
         }
@@ -124,14 +128,14 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.existsByRegionCode("1100000000")).willReturn(true);
+            given(regionRepository.existsByRegionCodeIncludingDeleted("1100000000")).willReturn(true);
 
             // when & then
             assertThatThrownBy(() -> regionService.createRegion(request))
                     .isInstanceOf(DuplicateRegionCodeException.class)
                     .hasMessageContaining("지역 코드");
 
-            then(regionRepository).should().existsByRegionCode("1100000000");
+            then(regionRepository).should().existsByRegionCodeIncludingDeleted("1100000000");
             then(regionRepository).should(never()).save(any());
         }
 
@@ -147,14 +151,14 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.existsByRegionCode("1100000000")).willReturn(false);
+            given(regionRepository.existsByRegionCodeIncludingDeleted("1100000000")).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> regionService.createRegion(request))
                     .isInstanceOf(InvalidRegionDepthException.class)
                     .hasMessageContaining("depth");
 
-            then(regionRepository).should().existsByRegionCode("1100000000");
+            then(regionRepository).should().existsByRegionCodeIncludingDeleted("1100000000");
             then(regionRepository).should(never()).save(any());
         }
 
@@ -172,7 +176,7 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.existsByRegionCode("1111000000")).willReturn(false);
+            given(regionRepository.existsByRegionCodeIncludingDeleted("1111000000")).willReturn(false);
             given(regionRepository.findByRegionId(parentId)).willReturn(Optional.empty());
 
             // when & then
@@ -180,7 +184,7 @@ class RegionServiceTest {
                     .isInstanceOf(InvalidParentRegionException.class)
                     .hasMessageContaining("상위");
 
-            then(regionRepository).should().existsByRegionCode("1111000000");
+            then(regionRepository).should().existsByRegionCodeIncludingDeleted("1111000000");
             then(regionRepository).should().findByRegionId(parentId);
             then(regionRepository).should(never()).save(any());
         }
@@ -207,7 +211,7 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.existsByRegionCode("1111000000")).willReturn(false);
+            given(regionRepository.existsByRegionCodeIncludingDeleted("1111000000")).willReturn(false);
             given(regionRepository.findByRegionId(parentId)).willReturn(Optional.of(parent));
 
             // when & then
@@ -215,7 +219,7 @@ class RegionServiceTest {
                     .isInstanceOf(InvalidRegionDepthException.class)
                     .hasMessageContaining("depth");
 
-            then(regionRepository).should().existsByRegionCode("1111000000");
+            then(regionRepository).should().existsByRegionCodeIncludingDeleted("1111000000");
             then(regionRepository).should().findByRegionId(parentId);
             then(regionRepository).should(never()).save(any());
         }
@@ -287,18 +291,22 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.findAll()).willReturn(List.of(seoul, busan));
+            Pageable pageable = PageRequest.of(0, 10);
+            given(regionRepository.findAll(pageable))
+                    .willReturn(new PageImpl<>(List.of(seoul, busan), pageable, 2));
 
             // when
-            var responses = regionService.searchRegions(null);
+            PageResponse<?> responses = regionService.searchRegions(null, pageable);
 
             // then
-            assertThat(responses).hasSize(2);
-            assertThat(responses)
+            assertThat(responses.content()).hasSize(2);
+            assertThat(responses.content())
                     .extracting("regionName")
                     .containsExactly("서울특별시", "부산광역시");
+            assertThat(responses.page()).isEqualTo(0);
+            assertThat(responses.size()).isEqualTo(10);
 
-            then(regionRepository).should().findAll();
+            then(regionRepository).should().findAll(pageable);
         }
 
         @Test
@@ -315,18 +323,19 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.findByRegionNameContaining("종로"))
-                    .willReturn(List.of(jongno));
+            Pageable pageable = PageRequest.of(0, 10);
+            given(regionRepository.findByRegionNameContaining("종로", pageable))
+                    .willReturn(new PageImpl<>(List.of(jongno), pageable, 1));
 
             // when
-            var responses = regionService.searchRegions("종로");
+            var responses = regionService.searchRegions("종로", pageable);
 
             // then
-            assertThat(responses).hasSize(1);
-            assertThat(responses.get(0).regionName()).isEqualTo("종로구");
-            assertThat(responses.get(0).parentId()).isEqualTo(parentId);
+            assertThat(responses.content()).hasSize(1);
+            assertThat(responses.content().get(0).regionName()).isEqualTo("종로구");
+            assertThat(responses.content().get(0).parentId()).isEqualTo(parentId);
 
-            then(regionRepository).should().findByRegionNameContaining("종로");
+            then(regionRepository).should().findByRegionNameContaining("종로", pageable);
         }
 
         @Test
@@ -341,17 +350,18 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.findByRegionNameContaining("종로"))
-                    .willReturn(List.of(jongno));
+            Pageable pageable = PageRequest.of(0, 10);
+            given(regionRepository.findByRegionNameContaining("종로", pageable))
+                    .willReturn(new PageImpl<>(List.of(jongno), pageable, 1));
 
             // when
-            var responses = regionService.searchRegions(" 종로 ");
+            var responses = regionService.searchRegions(" 종로 ", pageable);
 
             // then
-            assertThat(responses).hasSize(1);
-            assertThat(responses.get(0).regionName()).isEqualTo("종로구");
+            assertThat(responses.content()).hasSize(1);
+            assertThat(responses.content().get(0).regionName()).isEqualTo("종로구");
 
-            then(regionRepository).should().findByRegionNameContaining("종로");
+            then(regionRepository).should().findByRegionNameContaining("종로", pageable);
         }
 
         @Test

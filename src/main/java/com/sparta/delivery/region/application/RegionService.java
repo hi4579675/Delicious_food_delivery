@@ -1,5 +1,6 @@
 package com.sparta.delivery.region.application;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.region.domain.entity.Region;
 import com.sparta.delivery.region.domain.exception.DuplicateRegionCodeException;
 import com.sparta.delivery.region.domain.exception.InvalidParentRegionException;
@@ -15,6 +16,8 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,15 +65,13 @@ public class RegionService {
     }
 
     /** keyword가 있으면 지역명으로 검색하고, 없으면 전체 지역 목록을 조회한다. */
-    public List<RegionResponse> searchRegions(String keyword) {
+    public PageResponse<RegionResponse> searchRegions(String keyword, Pageable pageable) {
         String normalizedKeyword = keyword == null ? null : keyword.trim();
-        List<Region> regions = (normalizedKeyword == null || normalizedKeyword.isBlank())
-                ? regionRepository.findAll()
-                : regionRepository.findByRegionNameContaining(normalizedKeyword);
+        Page<Region> page = (normalizedKeyword == null || normalizedKeyword.isBlank())
+                ? regionRepository.findAll(pageable)
+                : regionRepository.findByRegionNameContaining(normalizedKeyword, pageable);
 
-        return regions.stream()
-                .map(RegionResponse::from)
-                .toList();
+        return PageResponse.from(page.map(RegionResponse::from));
     }
 
     /** 최상위 지역 목록 조회 */
