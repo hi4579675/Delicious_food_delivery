@@ -19,10 +19,12 @@ import com.sparta.delivery.store.presentation.dto.StoreResponse;
 import com.sparta.delivery.store.presentation.dto.StoreSearchCondition;
 import com.sparta.delivery.store.presentation.dto.StoreUpdateRequest;
 import com.sparta.delivery.user.domain.entity.UserRole;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,7 +42,9 @@ public class StoreService {
     private final StoreCategoryRepository storeCategoryRepository;
     private final RegionRepository regionRepository;
 
-    /** 가게를 생성한다. */
+    /**
+     * 가게를 생성한다.
+     */
     @Transactional
     public StoreResponse createStore(Long userId, StoreCreateRequest request) {
         Region region = validateRegion(request.regionId());
@@ -74,13 +78,16 @@ public class StoreService {
         return StoreResponse.from(savedStore);
     }
 
-    /** 조건에 따라 가게 목록을 조회한다. */
+    /**
+     * 조건에 따라 가게 목록을 조회한다.
+     */
     public PageResponse<StoreResponse> searchStores(StoreSearchCondition condition, Pageable pageable) {
         StoreSearchCondition normalizedCondition = condition == null
                 ? new StoreSearchCondition(null, null, null, null, null, null, null, null, null, null, null)
                 : condition;
 
-        Pageable normalizedPageable = Objects.requireNonNull(pageable, "pageable must not be null");
+        Pageable normalizedPageable = Objects.requireNonNull(pageable, "페이지 정보는 null일 수 없습니다.");
+
 
         Page<StoreResponse> page = storeRepository.searchStores(normalizedCondition, normalizedPageable)
                 .map(StoreResponse::from);
@@ -88,12 +95,16 @@ public class StoreService {
         return PageResponse.from(page);
     }
 
-    /** 가게를 단건 조회한다. */
+    /**
+     * 가게를 단건 조회한다.
+     */
     public StoreResponse getStore(UUID storeId) {
         return StoreResponse.from(getStoreOrThrow(storeId));
     }
 
-    /** 가게 정보를 수정한다. */
+    /**
+     * 가게 정보를 수정한다.
+     */
     @Transactional
     public StoreResponse updateStore(
             UUID storeId,
@@ -131,7 +142,9 @@ public class StoreService {
         return StoreResponse.from(store);
     }
 
-    /** 가게를 삭제한다. */
+    /**
+     * 가게를 삭제한다.
+     */
     @Transactional
     public void deleteStore(UUID storeId, Long actorId, UserRole actorRole) {
         Store store = getStoreOrThrow(storeId);

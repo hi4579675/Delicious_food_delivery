@@ -25,6 +25,7 @@ public class StoreRepositoryImpl implements StoreRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 
+    /** 검색 조건과 페이지 정보를 기반으로 가게 목록을 조회한다. */
     @Override
     public Page<Store> searchStores(StoreSearchCondition condition, Pageable pageable) {
         StoreSearchCondition normalizedCondition = condition == null
@@ -94,6 +95,7 @@ public class StoreRepositoryImpl implements StoreRepositoryCustom {
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
     }
 
+    /** Pageable 정렬 정보를 QueryDSL 정렬 조건으로 변환한다. */
     private OrderSpecifier<?>[] getOrderSpecifiers(Pageable pageable) {
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
@@ -110,6 +112,7 @@ public class StoreRepositoryImpl implements StoreRepositoryCustom {
             }
         }
 
+        // 지원하지 않는 정렬값만 들어온 경우 기본 정렬을 적용한다.
         if (orders.isEmpty()) {
             orders.add(new OrderSpecifier<>(DESC, store.createdAt));
         }
