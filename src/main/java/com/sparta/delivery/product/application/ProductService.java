@@ -1,5 +1,6 @@
 package com.sparta.delivery.product.application;
 
+import com.sparta.delivery.ai.application.AiDescriptionService;
 import com.sparta.delivery.product.domain.entity.DescriptionSource;
 import com.sparta.delivery.product.domain.entity.Product;
 import com.sparta.delivery.product.domain.exception.DuplicateProductNameException;
@@ -33,16 +34,27 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final StoreRepository storeRepository;
+    private final AiDescriptionService aiDescriptionService;
 
     @Transactional
     public ProductResponse create(Long actorId, UserRole actorRole, UUID storeId, ProductCreateRequest request) {
-        /**
-         * v1: AI 상품설명 자동 생성 기능을 배제한 상품 생성
-         */
         Store store = getStoreOrThrow(storeId);
         validateProductWritePermission(actorId, actorRole, store);
         validateDuplicateProductName(storeId, request.productName());
-        Product product = createProduct(storeId, request);
+
+        UUID productId = UUID.randomUUID();
+
+        String description = resolveDescription(productId, actorId, request);
+        DescriptionSource descriptionSource = resolveDescriptionSource(request, description);
+
+        Product product = createProduct(
+                productId,
+                storeId,
+                request,
+                description,
+                descriptionSource
+        );
+
         Product savedProduct = productRepository.save(product);
 
         log.info("상품 등록 완료 - actorID={}, storeId={}, productId={}", actorId, storeId, savedProduct.getProductId());
@@ -198,12 +210,18 @@ public class ProductService {
         }
     }
 
-    private Product createProduct(UUID storeId, ProductCreateRequest request) {
+    private Product createProduct(
+            UUID productId,
+            UUID storeId,
+            ProductCreateRequest request,
+            String description,
+            DescriptionSource descriptionSource
+    ) {
         return Product.create(
                 storeId,
                 request.productName(),
-                request.description(),
-                request.description() == null ? null : DescriptionSource.MANUAL,
+                description,
+                descriptionSource,
                 request.price(),
                 request.displayOrder()
         );
@@ -260,4 +278,26 @@ public class ProductService {
         return keyword.trim();
     }
 
+    private String resolveDescription(UUID productId, Long actorId, ProductCreateRequest request) {
+        if (request.shouldGenerateDescription()) {
+            return aiDescriptionService.generateDescription(
+                    productId,
+                    actorId,
+                    request.productName(),
+                    request.price(),
+                    request.aiPromptText()
+            );
+        }
+        return request.description();
+    }
+
+    private DescriptionSource resolveDescriptionSource(ProductCreateRequest request, String description) {
+        if (description == null) {
+            return null;
+        }
+
+        return request.shouldGenerateDescription()
+                ? DescriptionSource.AI_GENERATED
+                : DescriptionSource.MANUAL;
+    }
 }
