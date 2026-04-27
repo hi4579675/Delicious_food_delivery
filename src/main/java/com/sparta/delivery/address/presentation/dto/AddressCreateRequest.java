@@ -19,4 +19,26 @@ public record AddressCreateRequest(
 
         boolean isDefault
 ) {
+    public AddressCreateRequest {
+        alias = normalizeOptional(alias);
+        address = normalizeRequired(address);
+        detail = normalizeOptional(detail);
+        zipCode = normalizeOptional(zipCode);
+    }
+
+    private static String normalizeRequired(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
 }

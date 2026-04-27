@@ -45,10 +45,10 @@ class AddressServiceTest {
             // given
             Long userId = 1L;
             AddressCreateRequest request = new AddressCreateRequest(
-                    "집",
-                    "서울시 강남구",
-                    "101호",
-                    "12345",
+                    "  집  ",
+                    "  서울시 강남구  ",
+                    " 101호 ",
+                    " 12345 ",
                     false
             );
 
@@ -63,6 +63,35 @@ class AddressServiceTest {
             assertThat(response.isDefault()).isTrue();
             assertThat(response.alias()).isEqualTo("집");
             assertThat(response.address()).isEqualTo("서울시 강남구");
+            assertThat(response.detail()).isEqualTo("101호");
+            assertThat(response.zipCode()).isEqualTo("12345");
+        }
+
+        @Test
+        @DisplayName("선택 문자열 필드는 DTO에서 trim 및 blank to null 처리된다")
+        void normalizeOptionalFields() {
+            // given
+            Long userId = 1L;
+            AddressCreateRequest request = new AddressCreateRequest(
+                    "   ",
+                    "  서울시 강남구  ",
+                    "   ",
+                    "   ",
+                    false
+            );
+
+            given(addressRepository.existsByUserId(userId)).willReturn(false);
+            given(addressRepository.save(any(Address.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            AddressResponse response = addressService.create(userId, request);
+
+            // then
+            assertThat(response.alias()).isNull();
+            assertThat(response.address()).isEqualTo("서울시 강남구");
+            assertThat(response.detail()).isNull();
+            assertThat(response.zipCode()).isNull();
         }
 
         @Test
@@ -133,10 +162,10 @@ class AddressServiceTest {
             );
             setAddressId(address, addressId);
             AddressUpdateRequest request = new AddressUpdateRequest(
-                    "회사",
-                    "서울시 서초구",
-                    "202호",
-                    "54321"
+                    "  회사  ",
+                    "  서울시 서초구  ",
+                    " 202호 ",
+                    " 54321 "
             );
 
             given(addressRepository.findById(addressId)).willReturn(Optional.of(address));

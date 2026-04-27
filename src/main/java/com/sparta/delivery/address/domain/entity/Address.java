@@ -55,10 +55,10 @@ public class Address extends BaseEntity {
             boolean isDefault
     ) {
         this.userId = requireUserId(userId);
-        this.alias = normalizeOptional(alias);
+        this.alias = alias;
         this.address = requireAddress(address);
-        this.detail = normalizeOptional(detail);
-        this.zipCode = normalizeOptional(zipCode);
+        this.detail = detail;
+        this.zipCode = zipCode;
         this.isDefault = isDefault;
     }
 
@@ -81,10 +81,10 @@ public class Address extends BaseEntity {
     }
 
     public void update(String alias, String address, String detail, String zipCode) {
-        this.alias = normalizeOptional(alias);
+        this.alias = alias;
         this.address = requireAddress(address);
-        this.detail = normalizeOptional(detail);
-        this.zipCode = normalizeOptional(zipCode);
+        this.detail = detail;
+        this.zipCode = zipCode;
     }
 
     public void markAsDefault() {
@@ -99,7 +99,7 @@ public class Address extends BaseEntity {
         if (value == null || value.isBlank()) {
             throw new InvalidAddressException();
         }
-        return value.trim();
+        return value;
     }
 
     private static Long requireUserId(Long userId) {
@@ -107,14 +107,5 @@ public class Address extends BaseEntity {
             throw new InvalidUserIdException();
         }
         return userId;
-    }
-
-    private static String normalizeOptional(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 }
