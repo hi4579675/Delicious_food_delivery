@@ -20,6 +20,7 @@ import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.delivery.auth.infrastructure.jwt.JwtProvider;
 import com.sparta.delivery.common.config.security.UserPrincipal;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.payment.application.service.PaymentService;
 import com.sparta.delivery.payment.domain.entity.PaymentFailureReason;
 import com.sparta.delivery.payment.domain.entity.PaymentMethod;
@@ -157,15 +158,16 @@ class PaymentControllerTest {
         void getPayments_success() throws Exception {
             // given
             PaymentResponse response = paymentResponse(UUID.randomUUID(), UUID.randomUUID(), 10_000);
+            PageResponse<PaymentResponse> pageResponse = new PageResponse<>(List.of(response), 0, 10, 1, 1, true);
             given(paymentService.getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc"))
-                    .willReturn(List.of(response));
+                    .willReturn(pageResponse);
 
             // when & then
             mockMvc.perform(get("/api/v1/payments")
                             .with(authentication(authenticationToken(UserRole.MANAGER))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data[0].totalPrice").value(10_000));
+                    .andExpect(jsonPath("$.data.content[0].totalPrice").value(10_000));
 
             then(paymentService).should().getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc");
         }
@@ -174,8 +176,9 @@ class PaymentControllerTest {
         @DisplayName("size가 10/30/50이 아니면 10으로 보정한다")
         void getPayments_success_sizeNormalized() throws Exception {
             // given
+            PageResponse<PaymentResponse> pageResponse = new PageResponse<>(List.of(), 0, 10, 0, 0, true);
             given(paymentService.getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc"))
-                    .willReturn(List.of());
+                    .willReturn(pageResponse);
 
             // when & then
             mockMvc.perform(get("/api/v1/payments")

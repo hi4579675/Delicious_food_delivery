@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -19,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import com.sparta.delivery.order.domain.entity.Order;
 import com.sparta.delivery.order.domain.entity.OrderStatus;
 import com.sparta.delivery.order.domain.repository.OrderRepository;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.payment.domain.entity.Payment;
 import com.sparta.delivery.payment.domain.exception.DuplicatePaymentOrderException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderIdException;
@@ -92,7 +94,7 @@ public class PaymentService {
         return PaymentResponse.from(payment);
     }
 
-    public List<PaymentResponse> getPayments(
+    public PageResponse<PaymentResponse> getPayments(
             Long actorId,
             UserRole actorRole,
             int page,
@@ -116,7 +118,7 @@ public class PaymentService {
                     .toList();
 
             if (orderIds.isEmpty()) {
-                return List.of();
+                return PageResponse.from(new PageImpl<>(List.of(), pageable, 0));
             }
 
             result = paymentRepository.findAllByOrderIdIn(orderIds, pageable);
@@ -124,9 +126,7 @@ public class PaymentService {
             throw new PaymentForbiddenException();
         }
 
-        return result.getContent().stream()
-                .map(PaymentResponse::from)
-                .toList();
+        return PageResponse.from(result.map(PaymentResponse::from));
     }
 
     @Transactional

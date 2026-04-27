@@ -1,6 +1,5 @@
 package com.sparta.delivery.payment.presentation.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
@@ -23,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.common.response.ApiResponse;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.payment.application.service.PaymentService;
 import com.sparta.delivery.payment.presentation.dto.PaymentCreateRequest;
 import com.sparta.delivery.payment.presentation.dto.PaymentResponse;
@@ -67,7 +67,7 @@ public class PaymentController {
     @Operation(summary = "결제 전체 조회")
     @GetMapping("/payments")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'MANAGER', 'MASTER')")
-    public ResponseEntity<ApiResponse<List<PaymentResponse>>> getPayments(
+    public ResponseEntity<ApiResponse<PageResponse<PaymentResponse>>> getPayments(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
