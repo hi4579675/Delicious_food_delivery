@@ -7,12 +7,14 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.never;
 import static org.mockito.BDDMockito.then;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.store.domain.entity.StoreCategory;
 import com.sparta.delivery.store.domain.exception.DuplicateCategoryNameException;
 import com.sparta.delivery.store.domain.exception.DuplicateCategorySortOrderException;
 import com.sparta.delivery.store.domain.exception.StoreCategoryNotFoundException;
 import com.sparta.delivery.store.domain.repository.StoreCategoryRepository;
 import com.sparta.delivery.store.presentation.dto.StoreCategoryCreateRequest;
+import com.sparta.delivery.store.presentation.dto.StoreCategoryResponse;
 import com.sparta.delivery.store.presentation.dto.StoreCategoryUpdateRequest;
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +26,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -162,32 +166,60 @@ class StoreCategoryServiceTest {
             // given
             StoreCategory chicken = createCategory(UUID.randomUUID(), "치킨", 1, true);
             StoreCategory pizza = createCategory(UUID.randomUUID(), "피자", 2, true);
+            Pageable pageable = PageRequest.of(0, 10);
 
-            given(storeCategoryRepository.findAllByOrderBySortOrderAsc()).willReturn(List.of(chicken, pizza));
+            given(storeCategoryRepository.findAllByIsActiveTrue(pageable))
+                    .willReturn(new PageImpl<>(List.of(chicken, pizza), pageable, 2));
 
             // when
-            var responses = storeCategoryService.getCategories();
+            PageResponse<StoreCategoryResponse> responses = storeCategoryService.getCategories(pageable);
 
             // then
-            assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).categoryName()).isEqualTo("치킨");
-            assertThat(responses.get(1).categoryName()).isEqualTo("피자");
+            assertThat(responses.content()).hasSize(2);
+            assertThat(responses.content().get(0).categoryName()).isEqualTo("치킨");
+            assertThat(responses.content().get(1).categoryName()).isEqualTo("피자");
+            assertThat(responses.page()).isEqualTo(0);
+            assertThat(responses.size()).isEqualTo(10);
         }
 
         @Test
-        @DisplayName("활성 카테고리 목록을 조회한다")
-        void getActiveCategories_success() {
+        @DisplayName("비활성 카테고리 목록을 조회한다")
+        void getInactiveCategories_success() {
             // given
-            StoreCategory chicken = createCategory(UUID.randomUUID(), "치킨", 1, true);
+            StoreCategory chicken = createCategory(UUID.randomUUID(), "치킨", 1, false);
+            Pageable pageable = PageRequest.of(0, 10);
 
-            given(storeCategoryRepository.findAllByIsActiveTrueOrderBySortOrderAsc()).willReturn(List.of(chicken));
+            given(storeCategoryRepository.findAllByIsActiveFalse(pageable))
+                    .willReturn(new PageImpl<>(List.of(chicken), pageable, 1));
 
             // when
-            var responses = storeCategoryService.getActiveCategories();
+            PageResponse<StoreCategoryResponse> responses = storeCategoryService.getInactiveCategories(pageable);
 
             // then
-            assertThat(responses).hasSize(1);
-            assertThat(responses.get(0).categoryName()).isEqualTo("치킨");
+            assertThat(responses.content()).hasSize(1);
+            assertThat(responses.content().get(0).categoryName()).isEqualTo("치킨");
+            assertThat(responses.content().get(0).isActive()).isFalse();
+        }
+
+        @Test
+        @DisplayName("전체 카테고리 목록을 조회한다")
+        void getAllCategories_success() {
+            // given
+            StoreCategory chicken = createCategory(UUID.randomUUID(), "치킨", 1, true);
+            StoreCategory pizza = createCategory(UUID.randomUUID(), "피자", 2, false);
+            Pageable pageable = PageRequest.of(0, 10);
+
+            given(storeCategoryRepository.findAll(pageable))
+                    .willReturn(new PageImpl<>(List.of(chicken, pizza), pageable, 2));
+
+            // when
+            PageResponse<StoreCategoryResponse> responses = storeCategoryService.getAllCategories(pageable);
+
+            // then
+            assertThat(responses.content()).hasSize(2);
+            assertThat(responses.content())
+                    .extracting(StoreCategoryResponse::isActive)
+                    .containsExactly(true, false);
         }
     }
 

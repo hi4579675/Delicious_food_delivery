@@ -20,6 +20,7 @@ import com.sparta.delivery.auth.infrastructure.jwt.JwtAuthenticationFilter;
 import com.sparta.delivery.auth.infrastructure.jwt.JwtProvider;
 import com.sparta.delivery.common.config.security.SecurityConfig;
 import com.sparta.delivery.common.config.security.UserPrincipal;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.store.application.StoreCategoryService;
 import com.sparta.delivery.store.presentation.dto.StoreCategoryCreateRequest;
 import com.sparta.delivery.store.presentation.dto.StoreCategoryResponse;
@@ -37,6 +38,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -145,7 +148,7 @@ class StoreCategoryControllerTest {
     class GetCategoryApiTest {
 
         @Test
-        @DisplayName("가게 카테고리 목록을 조회한다")
+        @DisplayName("활성 가게 카테고리 목록을 조회한다")
         void getCategories_success() throws Exception {
             // given
             StoreCategoryResponse response = new StoreCategoryResponse(
@@ -156,23 +159,67 @@ class StoreCategoryControllerTest {
                     true
             );
 
-            given(storeCategoryService.getCategories()).willReturn(List.of(response));
+            given(storeCategoryService.getCategories(PageRequest.of(0, 10, Sort.Direction.ASC, "sortOrder")))
+                    .willReturn(new PageResponse<>(List.of(response), 0, 10, 1, 1, true));
 
             // when & then
             mockMvc.perform(get("/api/v1/store-categories")
                             .with(authentication(customerAuthentication())))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data[0].categoryName").value("치킨"))
-                    .andExpect(jsonPath("$.data[0].sortOrder").value(1));
+                    .andExpect(jsonPath("$.data.content[0].categoryName").value("치킨"))
+                    .andExpect(jsonPath("$.data.content[0].sortOrder").value(1))
+                    .andExpect(jsonPath("$.data.page").value(0))
+                    .andExpect(jsonPath("$.data.size").value(10));
 
-            then(storeCategoryService).should().getCategories();
+            then(storeCategoryService).should().getCategories(
+                    PageRequest.of(0, 10, Sort.Direction.ASC, "sortOrder")
+            );
         }
 
         @Test
-        @DisplayName("활성 가게 카테고리 목록을 조회한다")
-        void getActiveCategories_success() throws Exception {
+        @DisplayName("MANAGER 권한이면 비활성 가게 카테고리 목록을 조회한다")
+        void getInactiveCategories_success() throws Exception {
             // given
+            StoreCategoryResponse response = new StoreCategoryResponse(
+                    UUID.randomUUID(),
+                    "치킨",
+                    "치킨 카테고리",
+                    1,
+                    false
+            );
+
+            given(storeCategoryService.getInactiveCategories(PageRequest.of(0, 10, Sort.Direction.ASC, "sortOrder")))
+                    .willReturn(new PageResponse<>(List.of(response), 0, 10, 1, 1, true));
+
+            // when & then
+            mockMvc.perform(get("/api/v1/store-categories/inactive")
+                            .with(authentication(managerAuthentication())))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.content[0].categoryName").value("치킨"))
+                    .andExpect(jsonPath("$.data.content[0].isActive").value(false))
+                    .andExpect(jsonPath("$.data.page").value(0))
+                    .andExpect(jsonPath("$.data.size").value(10));
+
+            then(storeCategoryService).should().getInactiveCategories(
+                    PageRequest.of(0, 10, Sort.Direction.ASC, "sortOrder")
+            );
+        }
+
+        @Test
+        @DisplayName("CUSTOMER 권한이면 비활성 가게 카테고리 목록을 조회할 수 없다")
+        void getInactiveCategories_fail_whenCustomer() throws Exception {
+            mockMvc.perform(get("/api/v1/store-categories/inactive")
+                            .with(authentication(customerAuthentication())))
+                    .andExpect(status().isForbidden());
+
+            then(storeCategoryService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("MASTER 권한이면 전체 가게 카테고리 목록을 조회한다")
+        void getAllCategories_success() throws Exception {
             StoreCategoryResponse response = new StoreCategoryResponse(
                     UUID.randomUUID(),
                     "치킨",
@@ -181,16 +228,28 @@ class StoreCategoryControllerTest {
                     true
             );
 
-            given(storeCategoryService.getActiveCategories()).willReturn(List.of(response));
+            given(storeCategoryService.getAllCategories(PageRequest.of(0, 10, Sort.Direction.ASC, "sortOrder")))
+                    .willReturn(new PageResponse<>(List.of(response), 0, 10, 1, 1, true));
 
-            // when & then
-            mockMvc.perform(get("/api/v1/store-categories/active")
-                            .with(authentication(customerAuthentication())))
+            mockMvc.perform(get("/api/v1/store-categories/all")
+                            .with(authentication(masterAuthentication())))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data[0].categoryName").value("치킨"));
+                    .andExpect(jsonPath("$.data.content[0].categoryName").value("치킨"));
 
-            then(storeCategoryService).should().getActiveCategories();
+            then(storeCategoryService).should().getAllCategories(
+                    PageRequest.of(0, 10, Sort.Direction.ASC, "sortOrder")
+            );
+        }
+
+        @Test
+        @DisplayName("CUSTOMER 권한이면 전체 가게 카테고리 목록을 조회할 수 없다")
+        void getAllCategories_fail_whenCustomer() throws Exception {
+            mockMvc.perform(get("/api/v1/store-categories/all")
+                            .with(authentication(customerAuthentication())))
+                    .andExpect(status().isForbidden());
+
+            then(storeCategoryService).shouldHaveNoInteractions();
         }
 
         @Test

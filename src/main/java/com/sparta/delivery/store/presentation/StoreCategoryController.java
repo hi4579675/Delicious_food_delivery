@@ -2,6 +2,7 @@ package com.sparta.delivery.store.presentation;
 
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.common.response.ApiResponse;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.store.application.StoreCategoryService;
 import com.sparta.delivery.store.presentation.dto.StoreCategoryCreateRequest;
 import com.sparta.delivery.store.presentation.dto.StoreCategoryResponse;
@@ -12,6 +13,9 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,16 +48,33 @@ public class StoreCategoryController {
                 .body(ApiResponse.created(storeCategoryService.createCategory(request)));
     }
 
-    @Operation(summary = "가게 카테고리 목록 조회")
+    @Operation(summary = "활성 가게 카테고리 목록 조회")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<StoreCategoryResponse>>> getCategories() {
-        return ResponseEntity.ok(ApiResponse.success(storeCategoryService.getCategories()));
+    public ResponseEntity<ApiResponse<PageResponse<StoreCategoryResponse>>> getCategories(
+            @PageableDefault(size = 10, sort = "sortOrder", direction = Sort.Direction.ASC)
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(storeCategoryService.getCategories(pageable)));
     }
 
-    @Operation(summary = "활성 가게 카테고리 목록 조회")
-    @GetMapping("/active")
-    public ResponseEntity<ApiResponse<List<StoreCategoryResponse>>> getActiveCategories() {
-        return ResponseEntity.ok(ApiResponse.success(storeCategoryService.getActiveCategories()));
+    @Operation(summary = "비활성 가게 카테고리 목록 조회")
+    @GetMapping("/inactive")
+    @PreAuthorize("hasAnyRole('MANAGER', 'MASTER')")
+    public ResponseEntity<ApiResponse<PageResponse<StoreCategoryResponse>>> getInactiveCategories(
+            @PageableDefault(size = 10, sort = "sortOrder", direction = Sort.Direction.ASC)
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(storeCategoryService.getInactiveCategories(pageable)));
+    }
+
+    @Operation(summary = "전체 가게 카테고리 목록 조회")
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('MANAGER', 'MASTER')")
+    public ResponseEntity<ApiResponse<PageResponse<StoreCategoryResponse>>> getAllCategories(
+            @PageableDefault(size = 10, sort = "sortOrder", direction = Sort.Direction.ASC)
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(storeCategoryService.getAllCategories(pageable)));
     }
 
     @Operation(summary = "가게 카테고리 단건 조회")
