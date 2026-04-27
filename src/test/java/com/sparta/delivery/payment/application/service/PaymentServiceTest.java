@@ -292,7 +292,8 @@ class PaymentServiceTest {
                     0,
                     10,
                     "createdAt",
-                    "desc"
+                    "desc",
+                    null
             );
 
             // then
@@ -300,6 +301,35 @@ class PaymentServiceTest {
             assertThat(result.page()).isEqualTo(0);
             assertThat(result.size()).isEqualTo(2);
             then(paymentRepository).should().findAll(any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("MANAGER는 paymentStatus 조건으로 결제를 조회할 수 있다")
+        void getPayments_success_manager_withFilters() {
+            // given
+            Payment payment = createPayment(UUID.randomUUID(), UUID.randomUUID(), 10_000);
+            given(paymentRepository.findAllByPaymentStatus(
+                    eq(PaymentStatus.APPROVED),
+                    any(Pageable.class)
+            )).willReturn(new PageImpl<>(List.of(payment)));
+
+            // when
+            PageResponse<PaymentResponse> result = paymentService.getPayments(
+                    1L,
+                    UserRole.MANAGER,
+                    0,
+                    10,
+                    "createdAt",
+                    "desc",
+                    PaymentStatus.APPROVED
+            );
+
+            // then
+            assertThat(result.content()).hasSize(1);
+            then(paymentRepository).should().findAllByPaymentStatus(
+                    eq(PaymentStatus.APPROVED),
+                    any(Pageable.class)
+            );
         }
 
         @Test
@@ -316,7 +346,8 @@ class PaymentServiceTest {
                     0,
                     10,
                     "createdAt",
-                    "desc"
+                    "desc",
+                    null
             );
 
             // then
@@ -350,7 +381,8 @@ class PaymentServiceTest {
                     0,
                     10,
                     "createdAt",
-                    "desc"
+                    "desc",
+                    null
             );
 
             // then
@@ -362,7 +394,15 @@ class PaymentServiceTest {
         @Test
         @DisplayName("허용되지 않는 역할이면 PaymentForbiddenException")
         void getPayments_fail_whenRoleNotAllowed() {
-            assertThatThrownBy(() -> paymentService.getPayments(1L, UserRole.OWNER, 0, 10, "createdAt", "desc"))
+            assertThatThrownBy(() -> paymentService.getPayments(
+                    1L,
+                    UserRole.OWNER,
+                    0,
+                    10,
+                    "createdAt",
+                    "desc",
+                    null
+            ))
                     .isInstanceOf(PaymentForbiddenException.class);
         }
     }

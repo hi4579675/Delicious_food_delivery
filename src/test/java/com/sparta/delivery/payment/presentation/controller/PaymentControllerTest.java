@@ -159,7 +159,7 @@ class PaymentControllerTest {
             // given
             PaymentResponse response = paymentResponse(UUID.randomUUID(), UUID.randomUUID(), 10_000);
             PageResponse<PaymentResponse> pageResponse = new PageResponse<>(List.of(response), 0, 10, 1, 1, true);
-            given(paymentService.getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc"))
+            given(paymentService.getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc", null))
                     .willReturn(pageResponse);
 
             // when & then
@@ -169,7 +169,7 @@ class PaymentControllerTest {
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.content[0].totalPrice").value(10_000));
 
-            then(paymentService).should().getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc");
+            then(paymentService).should().getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc", null);
         }
 
         @Test
@@ -177,7 +177,7 @@ class PaymentControllerTest {
         void getPayments_success_sizeNormalized() throws Exception {
             // given
             PageResponse<PaymentResponse> pageResponse = new PageResponse<>(List.of(), 0, 10, 0, 0, true);
-            given(paymentService.getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc"))
+            given(paymentService.getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc", null))
                     .willReturn(pageResponse);
 
             // when & then
@@ -187,7 +187,39 @@ class PaymentControllerTest {
                             .with(authentication(authenticationToken(UserRole.MANAGER))))
                     .andExpect(status().isOk());
 
-            then(paymentService).should().getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc");
+            then(paymentService).should().getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc", null);
+        }
+
+        @Test
+        @DisplayName("검색조건 파라미터를 전달한다")
+        void getPayments_success_withSearchFilters() throws Exception {
+            // given
+            PageResponse<PaymentResponse> pageResponse = new PageResponse<>(List.of(), 0, 10, 0, 0, true);
+            given(paymentService.getPayments(
+                    1L,
+                    UserRole.MANAGER,
+                    0,
+                    10,
+                    "createdAt",
+                    "desc",
+                    PaymentStatus.APPROVED
+            )).willReturn(pageResponse);
+
+            // when & then
+            mockMvc.perform(get("/api/v1/payments")
+                            .param("paymentStatus", "APPROVED")
+                            .with(authentication(authenticationToken(UserRole.MANAGER))))
+                    .andExpect(status().isOk());
+
+            then(paymentService).should().getPayments(
+                    1L,
+                    UserRole.MANAGER,
+                    0,
+                    10,
+                    "createdAt",
+                    "desc",
+                    PaymentStatus.APPROVED
+            );
         }
     }
 

@@ -7,7 +7,6 @@ import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -22,6 +21,7 @@ import com.sparta.delivery.order.domain.entity.OrderStatus;
 import com.sparta.delivery.order.domain.repository.OrderRepository;
 import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.payment.domain.entity.Payment;
+import com.sparta.delivery.payment.domain.entity.PaymentStatus;
 import com.sparta.delivery.payment.domain.exception.DuplicatePaymentOrderException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderIdException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderStatusForPaymentException;
@@ -100,7 +100,8 @@ public class PaymentService {
             int page,
             int size,
             String sortBy,
-            String direction
+            String direction,
+            PaymentStatus paymentStatus
     ) {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
@@ -111,17 +112,9 @@ public class PaymentService {
         Page<Payment> result;
 
         if (actorRole == UserRole.MANAGER || actorRole == UserRole.MASTER) {
-            result = paymentRepository.findAll(pageable);
+            result = findAdminPayments(paymentStatus, pageable);
         } else if (actorRole == UserRole.CUSTOMER) {
-            List<UUID> orderIds = orderRepository.findAllByUserIdOrderByCreatedAtDesc(actorId).stream()
-                    .map(Order::getOrderId)
-                    .toList();
-
-            if (orderIds.isEmpty()) {
-                return PageResponse.from(new PageImpl<>(List.of(), pageable, 0));
-            }
-
-            result = paymentRepository.findAllByOrderIdIn(orderIds, pageable);
+            result = findCustomerPayments(actorId, paymentStatus, pageable);
         } else {
             throw new PaymentForbiddenException();
         }
@@ -174,6 +167,31 @@ public class PaymentService {
 
     private Sort.Direction parseDirection(String direction) {
         return "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+    }
+
+    private Page<Payment> findAdminPayments(PaymentStatus paymentStatus, Pageable pageable) {
+        if (paymentStatus != null) {
+            return paymentRepository.findAllByPaymentStatus(paymentStatus, pageable);
+        }
+        return paymentRepository.findAll(pageable);
+    }
+
+    private Page<Payment> findCustomerPayments(
+            Long actorId,
+            PaymentStatus paymentStatus,
+            Pageable pageable
+    ) {
+        List<UUID> orderIds = orderRepository.findAllByUserIdOrderByCreatedAtDesc(actorId).stream()
+                .map(Order::getOrderId)
+                .toList();
+
+        if (orderIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        if (paymentStatus != null) {
+            return paymentRepository.findAllByOrderIdInAndPaymentStatus(orderIds, paymentStatus, pageable);
+        }
+        return paymentRepository.findAllByOrderIdIn(orderIds, pageable);
     }
 
 }

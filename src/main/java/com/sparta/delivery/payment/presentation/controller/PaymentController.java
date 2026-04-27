@@ -27,6 +27,7 @@ import com.sparta.delivery.payment.application.service.PaymentService;
 import com.sparta.delivery.payment.presentation.dto.PaymentCreateRequest;
 import com.sparta.delivery.payment.presentation.dto.PaymentResponse;
 import com.sparta.delivery.payment.presentation.dto.PaymentStatusUpdateRequest;
+import com.sparta.delivery.payment.domain.entity.PaymentStatus;
 import com.sparta.delivery.user.domain.entity.UserRole;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -72,14 +73,23 @@ public class PaymentController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String direction
+            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(required = false) PaymentStatus paymentStatus
 
     ) {
         int normalizedSize = (size == 10 || size == 30 || size == 50) ? size : 10;
         UserRole actorRole = UserRole.valueOf(principal.getRole());
 
         return ResponseEntity.ok(ApiResponse.success(
-                paymentService.getPayments(principal.getId(), actorRole, page, normalizedSize, sortBy, direction)
+                paymentService.getPayments(
+                        principal.getId(),
+                        actorRole,
+                        page,
+                        normalizedSize,
+                        sortBy,
+                        direction,
+                        paymentStatus
+                )
         ));
     }
 

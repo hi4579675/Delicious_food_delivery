@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.sparta.delivery.payment.domain.entity.PaymentStatus;
 import com.sparta.delivery.payment.domain.entity.Payment;
 
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
@@ -23,5 +24,13 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Query(value = "select exists (select 1 from p_payment where order_id = :orderId)", nativeQuery = true)
     boolean existsAnyByOrderIdIncludingDeleted(@Param("orderId") UUID orderId);
 
+    Page<Payment> findAllByPaymentStatus(PaymentStatus paymentStatus, Pageable pageable);
+
     Page<Payment> findAllByOrderIdIn(List<UUID> orderIds, Pageable pageable);
+
+    Page<Payment> findAllByOrderIdInAndPaymentStatus(
+            List<UUID> orderIds,
+            PaymentStatus paymentStatus,
+            Pageable pageable
+    );
 }
