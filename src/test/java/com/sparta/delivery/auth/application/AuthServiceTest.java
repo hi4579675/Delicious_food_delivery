@@ -23,8 +23,8 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.never;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.*;
 
 /**
  * AuthService 단위 테스트.
@@ -130,6 +130,49 @@ class AuthServiceTest {
 
         // then : 위임만 검증. tokenVersion 증가 검증은 UserServiceTest 에서 담당.
         verify(userService).forceLogout(1L);
+    }
+
+    @Test
+    @DisplayName("로그인 호출 순서 - 비번 검증 → 토큰 발급 → lastLoginAt 갱신")
+    void login_call_order() {
+        // given
+        User user = createUser(1L, "alice@test.com", UserRole.CUSTOMER, "ENCODED", 0);
+        LoginRequest req = new LoginRequest("alice@test.com", "rawPw");
+        given(userService.findByEmail("alice@test.com")).willReturn(user);
+        given(passwordEncoder.matches("rawPw", "ENCODED")).willReturn(true);
+        given(jwtProvider.generateToken(1L, "CUSTOMER", 0)).willReturn("JWT");
+        given(jwtProvider.getExpirationMs()).willReturn(3600000L);
+
+        // when
+        authService.login(req);
+
+        // then : 비번 통과 전에 토큰이 발급되거나 lastLoginAt 이 갱신되는 회귀를 잡는다.
+        InOrder inOrder = inOrder(passwordEncoder, jwtProvider, userService);
+        inOrder.verify(passwordEncoder).matches("rawPw", "ENCODED");
+        inOrder.verify(jwtProvider).generateToken(1L, "CUSTOMER", 0);
+        inOrder.verify(userService).updateLastLoginAt(1L);
+    }
+
+    @Test
+    @DisplayName("로그아웃 - userService.forceLogout 정확히 1회 호출 + 다른 협력자 무호출")
+    void logout_called_once_only() {
+        // when
+        authService.logout(1L);
+
+        // then : 로그아웃은 토큰/비번 관련 협력자를 건드리지 않아야 한다.
+        verify(userService, times(1)).forceLogout(1L);
+        verifyNoInteractions(passwordEncoder, jwtProvider);
+    }
+
+    @Test
+    @DisplayName("로그아웃 - forceLogout 에서 예외 발생 시 그대로 전파 (catch 금지)")
+    void logout_propagates_exception() {
+        // given : 존재하지 않는 유저 → UserService 가 던지는 예외
+        willThrow(new UserNotFoundException()).given(userService).forceLogout(999L);
+
+        // when / then : AuthService 가 임의로 변환/삼키지 않음
+        assertThatThrownBy(() -> authService.logout(999L))
+                .isInstanceOf(UserNotFoundException.class);
     }
 
 }
