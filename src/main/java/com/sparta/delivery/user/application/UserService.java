@@ -2,10 +2,7 @@ package com.sparta.delivery.user.application;
 
 import com.sparta.delivery.user.domain.entity.User;
 import com.sparta.delivery.user.domain.entity.UserRole;
-import com.sparta.delivery.user.domain.exception.DuplicateEmailException;
-import com.sparta.delivery.user.domain.exception.ForbiddenRoleChangeException;
-import com.sparta.delivery.user.domain.exception.InvalidPasswordException;
-import com.sparta.delivery.user.domain.exception.UserNotFoundException;
+import com.sparta.delivery.user.domain.exception.*;
 import com.sparta.delivery.user.domain.repository.UserRepository;
 import com.sparta.delivery.user.presentation.dto.*;
 import lombok.RequiredArgsConstructor;
@@ -74,13 +71,30 @@ public class UserService {
         );
     }
 
-    /** 비밀번호 변경 */
+    /**
+     * 비밀번호 변경.
+     *
+     * 검증 순서:
+     *  1. 현재 비번 일치 여부 — 본인 확인
+     *  2. 새 비번이 기존과 동일한지 — 비번 회전 효과 무력화 방지
+     *
+     * 두 번째 검증은 raw 끼리 비교가 아니라 passwordEncoder.matches(new, oldHash) 로 수행.
+     * BCrypt 는 salt 때문에 같은 raw 라도 encode() 결과가 매번 달라 직접 비교가 의미 없음.
+     */
     @Transactional
     public void changePassword(Long userId, PasswordChangeRequest request) {
         User user = findUser(userId);
+
+        // 1. 현재 비번 검증
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new InvalidPasswordException();
         }
+
+        // 2. 새 비번 == 기존 비번 차단
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new SamePasswordException();
+        }
+
         user.changePassword(passwordEncoder.encode(request.newPassword()));
     }
 
