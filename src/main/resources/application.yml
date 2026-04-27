@@ -13,6 +13,14 @@ spring:
       hibernate:
         format_sql: true
     open-in-view: false
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:dummy-key}
+      base-url: https://api.openai.com
+
+    gemini:
+      api-key: ${GEMINI_API_KEY:dummy-key}
+      max-input-length: 500
 
 springdoc:
   swagger-ui:
@@ -25,11 +33,6 @@ springdoc:
 jwt:
   secret: ${JWT_SECRET:local-dev-secret-key-at-least-256-bits-long-for-hs256-algorithm}
   expiration: 3600000
-
-ai:
-  gemini:
-    api-key: ${OPENAI_API_KEY:dummy-key}
-    max-input-length: 500
 
 ---
 # ==========================================
