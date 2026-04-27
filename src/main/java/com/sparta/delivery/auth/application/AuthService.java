@@ -56,4 +56,18 @@ public class AuthService {
                 jwtProvider.getExpirationMs()
         );
     }
+
+    /**
+     * 로그아웃.
+     *
+     * 현재 tokenVersion 단위 무효화 구조라 "이 디바이스만 로그아웃" 은 불가능 — 호출 시 해당 유저의
+     * 모든 기존 JWT 가 즉시 무효화된다. 디바이스별 분리는 추후 RefreshToken 도입 시 재설계.
+     *
+     * 실제 무효화는 UserService.forceLogout 에 위임 (도메인 흐름 유지).
+     */
+    public void logout(Long userId) {
+        userService.forceLogout(userId);
+        log.info("로그아웃: userId={}", userId);
+    }
+
 }

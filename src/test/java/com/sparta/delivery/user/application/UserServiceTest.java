@@ -2,10 +2,7 @@ package com.sparta.delivery.user.application;
 
 import com.sparta.delivery.user.domain.entity.User;
 import com.sparta.delivery.user.domain.entity.UserRole;
-import com.sparta.delivery.user.domain.exception.DuplicateEmailException;
-import com.sparta.delivery.user.domain.exception.ForbiddenRoleChangeException;
-import com.sparta.delivery.user.domain.exception.InvalidPasswordException;
-import com.sparta.delivery.user.domain.exception.UserNotFoundException;
+import com.sparta.delivery.user.domain.exception.*;
 import com.sparta.delivery.user.domain.repository.UserRepository;
 import com.sparta.delivery.user.presentation.dto.PasswordChangeRequest;
 import com.sparta.delivery.user.presentation.dto.RoleChangeRequest;
@@ -130,6 +127,26 @@ class UserServiceTest {
                      .isInstanceOf(InvalidPasswordException.class);
              verify(passwordEncoder, never()).encode(anyString());
          }
+
+         @Test
+         @DisplayName("새 비밀번호가 기존과 동일하면 SamePasswordException")
+         void same_as_old_password() {
+             // given : 동일 raw 비번으로 변경 시도. matches 가 두 번 호출되며 같은 인자에 같은 true.
+             User user = createUser(1L, "alice@test.com", UserRole.CUSTOMER, "OLD_ENCODED");
+             given(userRepository.findById(1L)).willReturn(Optional.of(user));
+             given(passwordEncoder.matches("Pass1234!", "OLD_ENCODED")).willReturn(true);
+
+             // when / then
+             assertThatThrownBy(() ->
+                     userService.changePassword(1L, new PasswordChangeRequest("Pass1234!", "Pass1234!")))
+                     .isInstanceOf(SamePasswordException.class);
+
+             // 인코딩/실제 변경 모두 일어나지 않음 — tokenVersion 불변
+             verify(passwordEncoder, never()).encode(anyString());
+             assertThat(user.getPassword()).isEqualTo("OLD_ENCODED");
+             assertThat(user.getTokenVersion()).isEqualTo(0);
+         }
+
      }
 
      // 탈퇴
@@ -290,4 +307,35 @@ class UserServiceTest {
         }
     }
 
+    // 강제 로그아웃 (tokenVersion 증가)
+    @Nested
+    @DisplayName("강제 로그아웃 (forceLogout)")
+    class ForceLogout {
+
+        @Test
+        @DisplayName("정상 호출 - tokenVersion 1 증가")
+        void success() {
+            // given : tv=3 인 유저
+            User user = createUser(1L, "alice@test.com", UserRole.CUSTOMER, "ENCODED");
+            ReflectionTestUtils.setField(user, "tokenVersion", 3);
+            given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+            // when
+            userService.forceLogout(1L);
+
+            // then : 동일 객체 상태로 확인 (도메인 메서드가 처리)
+            assertThat(user.getTokenVersion()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 유저 - UserNotFoundException")
+        void user_not_found() {
+            // given : findById 가 empty
+            given(userRepository.findById(999L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> userService.forceLogout(999L))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+    }
 }

@@ -2,10 +2,7 @@ package com.sparta.delivery.user.application;
 
 import com.sparta.delivery.user.domain.entity.User;
 import com.sparta.delivery.user.domain.entity.UserRole;
-import com.sparta.delivery.user.domain.exception.DuplicateEmailException;
-import com.sparta.delivery.user.domain.exception.ForbiddenRoleChangeException;
-import com.sparta.delivery.user.domain.exception.InvalidPasswordException;
-import com.sparta.delivery.user.domain.exception.UserNotFoundException;
+import com.sparta.delivery.user.domain.exception.*;
 import com.sparta.delivery.user.domain.repository.UserRepository;
 import com.sparta.delivery.user.presentation.dto.*;
 import lombok.RequiredArgsConstructor;
@@ -74,13 +71,30 @@ public class UserService {
         );
     }
 
-    /** 비밀번호 변경 */
+    /**
+     * 비밀번호 변경.
+     *
+     * 검증 순서:
+     *  1. 현재 비번 일치 여부 — 본인 확인
+     *  2. 새 비번이 기존과 동일한지 — 비번 회전 효과 무력화 방지
+     *
+     * 두 번째 검증은 raw 끼리 비교가 아니라 passwordEncoder.matches(new, oldHash) 로 수행.
+     * BCrypt 는 salt 때문에 같은 raw 라도 encode() 결과가 매번 달라 직접 비교가 의미 없음.
+     */
     @Transactional
     public void changePassword(Long userId, PasswordChangeRequest request) {
         User user = findUser(userId);
+
+        // 1. 현재 비번 검증
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new InvalidPasswordException();
         }
+
+        // 2. 새 비번 == 기존 비번 차단
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new SamePasswordException();
+        }
+
         user.changePassword(passwordEncoder.encode(request.newPassword()));
     }
 
@@ -98,6 +112,19 @@ public class UserService {
         findUser(userId).withdraw();
     }
 
+    /**
+     * 강제 로그아웃 — tokenVersion 증가로 해당 유저의 모든 기존 JWT 무효화.
+     *
+     * 사용처:
+     *  - 본인 로그아웃 (AuthController.logout)
+     *  - 추후 관리자에 의한 강제 로그아웃 / 보안 사고 대응 등에서도 재사용
+     *
+     * 탈퇴(withdraw) 와 달리 deleted_at 은 건드리지 않음 — 단순 토큰 폐기 용도.
+     */
+    @Transactional
+    public void forceLogout(Long userId) {
+        findUser(userId).incrementTokenVersion();
+    }
 
     /**
      * 역할 변경 (관리자 기능).

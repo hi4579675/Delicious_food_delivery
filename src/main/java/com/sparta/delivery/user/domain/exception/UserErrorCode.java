@@ -14,7 +14,8 @@ public enum UserErrorCode implements ErrorCode {
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "USER-003", "비밀번호가 올바르지 않습니다."),
     FORBIDDEN_ROLE_CHANGE(HttpStatus.FORBIDDEN, "USER-004", "권한을 변경할 수 없습니다."),
     ALREADY_DELETED(HttpStatus.BAD_REQUEST, "USER-005", "이미 탈퇴한 사용자입니다."),
-    INVALID_ROLE(HttpStatus.BAD_REQUEST, "USER-006", "유효하지 않은 역할입니다. (CUSTOMER, OWNER, MANAGER, MASTER)");
+    INVALID_ROLE(HttpStatus.BAD_REQUEST, "USER-006", "유효하지 않은 역할입니다. (CUSTOMER, OWNER, MANAGER, MASTER)"),
+    SAME_AS_OLD_PASSWORD(HttpStatus.BAD_REQUEST, "USER-007", "새 비밀번호가 기존 비밀번호와 동일합니다.");
 
     private final HttpStatus status;
     private final String code;
