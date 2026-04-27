@@ -98,6 +98,19 @@ public class UserService {
         findUser(userId).withdraw();
     }
 
+    /**
+     * 강제 로그아웃 — tokenVersion 증가로 해당 유저의 모든 기존 JWT 무효화.
+     *
+     * 사용처:
+     *  - 본인 로그아웃 (AuthController.logout)
+     *  - 추후 관리자에 의한 강제 로그아웃 / 보안 사고 대응 등에서도 재사용
+     *
+     * 탈퇴(withdraw) 와 달리 deleted_at 은 건드리지 않음 — 단순 토큰 폐기 용도.
+     */
+    @Transactional
+    public void forceLogout(Long userId) {
+        findUser(userId).incrementTokenVersion();
+    }
 
     /**
      * 역할 변경 (관리자 기능).

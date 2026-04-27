@@ -42,8 +42,9 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/info"
                         ).permitAll()
-                        // 인증/회원가입 (auth 도메인이 실제 경로 확정 시 갱신)
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        // /auth 하위는 무인증 경로만 명시. /auth/logout 등 인증 필요한 경로는
+                        // anyRequest().authenticated() 에 흡수시킨다.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/signup")
                         .permitAll()
                         // 상품 조회

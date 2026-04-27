@@ -290,4 +290,35 @@ class UserServiceTest {
         }
     }
 
+    // 강제 로그아웃 (tokenVersion 증가)
+    @Nested
+    @DisplayName("강제 로그아웃 (forceLogout)")
+    class ForceLogout {
+
+        @Test
+        @DisplayName("정상 호출 - tokenVersion 1 증가")
+        void success() {
+            // given : tv=3 인 유저
+            User user = createUser(1L, "alice@test.com", UserRole.CUSTOMER, "ENCODED");
+            ReflectionTestUtils.setField(user, "tokenVersion", 3);
+            given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+            // when
+            userService.forceLogout(1L);
+
+            // then : 동일 객체 상태로 확인 (도메인 메서드가 처리)
+            assertThat(user.getTokenVersion()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 유저 - UserNotFoundException")
+        void user_not_found() {
+            // given : findById 가 empty
+            given(userRepository.findById(999L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> userService.forceLogout(999L))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+    }
 }

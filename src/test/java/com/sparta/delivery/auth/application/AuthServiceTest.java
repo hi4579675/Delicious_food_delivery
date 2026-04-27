@@ -122,4 +122,14 @@ class AuthServiceTest {
         verify(jwtProvider).generateToken(1L, "MANAGER", 5);
     }
 
+    @Test
+    @DisplayName("로그아웃 - userService.forceLogout 위임 호출")
+    void logout_delegates_to_userService() {
+        // when
+        authService.logout(1L);
+
+        // then : 위임만 검증. tokenVersion 증가 검증은 UserServiceTest 에서 담당.
+        verify(userService).forceLogout(1L);
+    }
+
 }

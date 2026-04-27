@@ -130,11 +130,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         objectMapper.writeValue(response.getWriter(), ApiResponse.error(ec));
     }
 
+    /**
+     * 필터 스킵 대상 — "토큰 없이 호출되는 게 정상" 인 엔드포인트만 화이트리스트.
+     *
+     * 주의: /api/v1/auth/** 전체를 스킵하면 안 됨. /auth/logout 은 인증된 요청이어야 하므로
+     * 필터를 타고 SecurityContext 에 principal 이 채워져야 한다. 따라서 /auth 하위는
+     * 무인증 경로(login 등)만 명시적으로 enumerate.
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/api/v1/auth/")
-                || (path.equals("/api/v1/users/signup") && "POST".equalsIgnoreCase(request.getMethod()))
+        boolean isAuthLogin = "/api/v1/auth/login".equals(path)
+                && "POST".equalsIgnoreCase(request.getMethod());
+        boolean isSignup = "/api/v1/users/signup".equals(path)
+                && "POST".equalsIgnoreCase(request.getMethod());
+        return isAuthLogin
+                || isSignup
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/actuator/health")
