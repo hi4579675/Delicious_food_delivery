@@ -29,7 +29,7 @@ public class StoreRepositoryImpl implements StoreRepositoryCustom {
     @Override
     public Page<Store> searchStores(StoreSearchCondition condition, Pageable pageable) {
         StoreSearchCondition normalizedCondition = condition == null
-                ? new StoreSearchCondition(null, null, null, null, null, null, null, null, null, null, null)
+                ? new StoreSearchCondition(null, null, null, null, null, null, null, null, null, null, null, null)
                 : condition;
 
         BooleanBuilder builder = new BooleanBuilder();
@@ -48,6 +48,10 @@ public class StoreRepositoryImpl implements StoreRepositoryCustom {
 
         if (normalizedCondition.isOpen() != null) {
             builder.and(store.isOpen.eq(normalizedCondition.isOpen()));
+        }
+
+        if (normalizedCondition.isActive() != null) {
+            builder.and(store.isActive.eq(normalizedCondition.isActive()));
         }
 
         if (normalizedCondition.keyword() != null && !normalizedCondition.keyword().isBlank()) {

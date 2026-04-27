@@ -9,6 +9,7 @@ public record StoreSearchCondition(
         UUID categoryId,
         Long userId,
         Boolean isOpen,
+        Boolean isActive,
         String keyword,
         String addressKeyword,
         BigDecimal minRating,

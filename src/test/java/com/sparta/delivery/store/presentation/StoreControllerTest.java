@@ -198,7 +198,7 @@ class StoreControllerTest {
                     0
             );
 
-            given(storeService.searchStores(any(StoreSearchCondition.class), any(Pageable.class)))
+            given(storeService.searchStores(any(StoreSearchCondition.class), any(Pageable.class), any(UserRole.class)))
                     .willReturn(new PageResponse<>(List.of(response), 0, 10, 1, 1, true));
 
             // when & then
@@ -212,14 +212,15 @@ class StoreControllerTest {
 
             then(storeService).should().searchStores(
                     eq(new StoreSearchCondition(
-                            null, null, null, null, null, null, null, null, null, null, null
+                            null, null, null, null, null, null, null, null, null, null, null, null
                     )),
-                    eq(PageRequest.of(0, 10, org.springframework.data.domain.Sort.Direction.DESC, "createdAt"))
+                    eq(PageRequest.of(0, 10, org.springframework.data.domain.Sort.Direction.DESC, "createdAt")),
+                    eq(UserRole.CUSTOMER)
             );
         }
 
         @Test
-        @DisplayName("검색 조건으로 가게 목록을 조회한다")
+        @DisplayName("관리자는 활성 여부를 포함한 검색 조건으로 가게 목록을 조회한다")
         void getStores_success_withConditions() throws Exception {
             // given
             UUID regionId = UUID.randomUUID();
@@ -227,15 +228,16 @@ class StoreControllerTest {
             LocalDateTime createdAfter = LocalDateTime.of(2026, 4, 1, 0, 0);
             LocalDateTime createdBefore = LocalDateTime.of(2026, 4, 30, 23, 59);
 
-            given(storeService.searchStores(any(StoreSearchCondition.class), any(Pageable.class)))
+            given(storeService.searchStores(any(StoreSearchCondition.class), any(Pageable.class), any(UserRole.class)))
                     .willReturn(new PageResponse<>(List.of(), 0, 10, 0, 0, true));
 
             // when & then
             mockMvc.perform(get("/api/v1/stores")
-                            .with(authentication(customerAuthentication()))
+                            .with(authentication(managerAuthentication()))
                             .param("regionId", regionId.toString())
                             .param("categoryId", categoryId.toString())
                             .param("isOpen", "true")
+                            .param("isActive", "false")
                             .param("keyword", "치킨")
                             .param("addressKeyword", "종로구")
                             .param("minRating", "4.0")
@@ -252,6 +254,7 @@ class StoreControllerTest {
                             categoryId,
                             null,
                             true,
+                            false,
                             "치킨",
                             "종로구",
                             BigDecimal.valueOf(4.0),
@@ -260,7 +263,8 @@ class StoreControllerTest {
                             createdAfter,
                             createdBefore
                     )),
-                    eq(PageRequest.of(0, 10, org.springframework.data.domain.Sort.Direction.DESC, "createdAt"))
+                    eq(PageRequest.of(0, 10, org.springframework.data.domain.Sort.Direction.DESC, "createdAt")),
+                    eq(UserRole.MANAGER)
             );
         }
 
@@ -286,7 +290,7 @@ class StoreControllerTest {
                     0
             );
 
-            given(storeService.searchStores(any(StoreSearchCondition.class), any(Pageable.class)))
+            given(storeService.searchStores(any(StoreSearchCondition.class), any(Pageable.class), any(UserRole.class)))
                     .willReturn(new PageResponse<>(List.of(response), 0, 10, 1, 1, true));
 
             // when & then
@@ -299,9 +303,10 @@ class StoreControllerTest {
 
             then(storeService).should().searchStores(
                     eq(new StoreSearchCondition(
-                            null, null, userId, null, null, null, null, null, null, null, null
+                            null, null, userId, null, null, null, null, null, null, null, null, null
                     )),
-                    eq(PageRequest.of(0, 10, org.springframework.data.domain.Sort.Direction.DESC, "createdAt"))
+                    eq(PageRequest.of(0, 10, org.springframework.data.domain.Sort.Direction.DESC, "createdAt")),
+                    eq(UserRole.CUSTOMER)
             );
         }
 

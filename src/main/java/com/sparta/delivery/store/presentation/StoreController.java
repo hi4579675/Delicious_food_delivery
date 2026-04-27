@@ -56,10 +56,12 @@ public class StoreController {
     @Operation(summary = "가게 목록 조회")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<StoreResponse>>> getStores(
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) UUID regionId,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) Boolean isOpen,
+            @RequestParam(required = false) Boolean isActive,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String addressKeyword,
             @RequestParam(required = false) BigDecimal minRating,
@@ -75,6 +77,7 @@ public class StoreController {
                 categoryId,
                 userId,
                 isOpen,
+                isActive,
                 keyword,
                 addressKeyword,
                 minRating,
@@ -84,7 +87,9 @@ public class StoreController {
                 createdBefore
         );
 
-        return ResponseEntity.ok(ApiResponse.success(storeService.searchStores(condition, pageable)));
+        return ResponseEntity.ok(ApiResponse.success(
+                storeService.searchStores(condition, pageable, UserRole.valueOf(principal.getRole()))
+        ));
     }
 
     @Operation(summary = "가게 단건 조회")

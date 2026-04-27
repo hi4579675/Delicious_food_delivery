@@ -81,13 +81,33 @@ public class StoreService {
     /**
      * 조건에 따라 가게 목록을 조회한다.
      */
-    public PageResponse<StoreResponse> searchStores(StoreSearchCondition condition, Pageable pageable) {
+    public PageResponse<StoreResponse> searchStores(
+            StoreSearchCondition condition,
+            Pageable pageable,
+            UserRole actorRole
+    ) {
         StoreSearchCondition normalizedCondition = condition == null
-                ? new StoreSearchCondition(null, null, null, null, null, null, null, null, null, null, null)
+                ? new StoreSearchCondition(null, null, null, null, null, null, null, null, null, null, null, null)
                 : condition;
 
         Pageable normalizedPageable = Objects.requireNonNull(pageable, "페이지 정보는 null일 수 없습니다.");
 
+        if (actorRole != UserRole.MANAGER && actorRole != UserRole.MASTER) {
+            normalizedCondition = new StoreSearchCondition(
+                    normalizedCondition.regionId(),
+                    normalizedCondition.categoryId(),
+                    normalizedCondition.userId(),
+                    normalizedCondition.isOpen(),
+                    true,
+                    normalizedCondition.keyword(),
+                    normalizedCondition.addressKeyword(),
+                    normalizedCondition.minRating(),
+                    normalizedCondition.minReviewCount(),
+                    normalizedCondition.maxMinOrderAmount(),
+                    normalizedCondition.createdAfter(),
+                    normalizedCondition.createdBefore()
+            );
+        }
 
         Page<StoreResponse> page = storeRepository.searchStores(normalizedCondition, normalizedPageable)
                 .map(StoreResponse::from);

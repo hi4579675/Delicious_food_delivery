@@ -278,19 +278,22 @@ class StoreServiceTest {
     class GetStoresTest {
 
         @Test
-        @DisplayName("조건이 없으면 전체 가게 목록을 조회한다")
-        void searchStores_success_withoutCondition() {
+        @DisplayName("일반 사용자는 활성 가게만 조회한다")
+        void searchStores_success_forNonManager() {
             // given
             Store store = createStoreEntity(UUID.randomUUID(), UUID.randomUUID(), 1L);
             StoreSearchCondition condition = new StoreSearchCondition(
-                    null, null, null, null, null, null, null, null, null, null, null
+                    null, null, null, null, false, null, null, null, null, null, null, null
+            );
+            StoreSearchCondition normalizedCondition = new StoreSearchCondition(
+                    null, null, null, null, true, null, null, null, null, null, null, null
             );
             Pageable pageable = PageRequest.of(0, 10);
-            given(storeRepository.searchStores(condition, pageable))
+            given(storeRepository.searchStores(normalizedCondition, pageable))
                     .willReturn(new PageImpl<>(List.of(store), pageable, 1));
 
             // when
-            PageResponse<StoreResponse> response = storeService.searchStores(condition, pageable);
+            PageResponse<StoreResponse> response = storeService.searchStores(condition, pageable, UserRole.CUSTOMER);
 
             // then
             assertThat(response.content()).hasSize(1);
@@ -299,12 +302,12 @@ class StoreServiceTest {
             assertThat(response.size()).isEqualTo(10);
             assertThat(response.totalElements()).isEqualTo(1);
 
-            then(storeRepository).should().searchStores(condition, pageable);
+            then(storeRepository).should().searchStores(normalizedCondition, pageable);
         }
 
         @Test
-        @DisplayName("조건 객체로 가게 목록을 조회한다")
-        void searchStores_success_withCondition() {
+        @DisplayName("관리자는 활성 여부 조건을 그대로 조회한다")
+        void searchStores_success_forManager() {
             // given
             UUID regionId = UUID.randomUUID();
             UUID categoryId = UUID.randomUUID();
@@ -314,6 +317,7 @@ class StoreServiceTest {
                     regionId,
                     categoryId,
                     userId,
+                    true,
                     true,
                     "왕조",
                     "종로구",
@@ -328,7 +332,7 @@ class StoreServiceTest {
                     .willReturn(new PageImpl<>(List.of(store), pageable, 1));
 
             // when
-            PageResponse<StoreResponse> response = storeService.searchStores(condition, pageable);
+            PageResponse<StoreResponse> response = storeService.searchStores(condition, pageable, UserRole.MANAGER);
 
             // then
             assertThat(response.content()).hasSize(1);
