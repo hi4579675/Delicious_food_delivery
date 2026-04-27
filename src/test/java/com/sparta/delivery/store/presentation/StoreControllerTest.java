@@ -19,14 +19,17 @@ import com.sparta.delivery.auth.infrastructure.jwt.JwtAuthenticationEntryPoint;
 import com.sparta.delivery.auth.infrastructure.jwt.JwtAuthenticationFilter;
 import com.sparta.delivery.auth.infrastructure.jwt.JwtProvider;
 import com.sparta.delivery.common.config.security.SecurityConfig;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.store.application.StoreService;
+import com.sparta.delivery.store.application.dto.StoreSearchCondition;
 import com.sparta.delivery.store.presentation.dto.StoreCreateRequest;
 import com.sparta.delivery.store.presentation.dto.StoreResponse;
 import com.sparta.delivery.store.presentation.dto.StoreUpdateRequest;
 import com.sparta.delivery.user.application.UserService;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import jakarta.servlet.FilterChain;
@@ -41,6 +44,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -193,36 +198,74 @@ class StoreControllerTest {
                     0
             );
 
-            given(storeService.getStores(null, null, null)).willReturn(List.of(response));
+            given(storeService.searchStores(any(StoreSearchCondition.class), any(Pageable.class), any(UserRole.class)))
+                    .willReturn(new PageResponse<>(List.of(response), 0, 10, 1, 1, true));
 
             // when & then
             mockMvc.perform(get("/api/v1/stores")
                             .with(authentication(customerAuthentication())))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data[0].storeName").value("왕조치킨"));
+                    .andExpect(jsonPath("$.data.content[0].storeName").value("왕조치킨"))
+                    .andExpect(jsonPath("$.data.page").value(0))
+                    .andExpect(jsonPath("$.data.size").value(10));
 
-            then(storeService).should().getStores(null, null, null);
+            then(storeService).should().searchStores(
+                    eq(new StoreSearchCondition(
+                            null, null, null, null, null, null, null, null, null, null, null, null
+                    )),
+                    eq(PageRequest.of(0, 10, org.springframework.data.domain.Sort.Direction.DESC, "createdAt")),
+                    eq(UserRole.CUSTOMER)
+            );
         }
 
         @Test
-        @DisplayName("지역과 카테고리 조건으로 가게 목록을 조회한다")
+        @DisplayName("관리자는 활성 여부를 포함한 검색 조건으로 가게 목록을 조회한다")
         void getStores_success_withConditions() throws Exception {
             // given
             UUID regionId = UUID.randomUUID();
             UUID categoryId = UUID.randomUUID();
+            LocalDateTime createdAfter = LocalDateTime.of(2026, 4, 1, 0, 0);
+            LocalDateTime createdBefore = LocalDateTime.of(2026, 4, 30, 23, 59);
 
-            given(storeService.getStores(regionId, categoryId, null)).willReturn(List.of());
+            given(storeService.searchStores(any(StoreSearchCondition.class), any(Pageable.class), any(UserRole.class)))
+                    .willReturn(new PageResponse<>(List.of(), 0, 10, 0, 0, true));
 
             // when & then
             mockMvc.perform(get("/api/v1/stores")
-                            .with(authentication(customerAuthentication()))
+                            .with(authentication(managerAuthentication()))
                             .param("regionId", regionId.toString())
-                            .param("categoryId", categoryId.toString()))
+                            .param("categoryId", categoryId.toString())
+                            .param("isOpen", "true")
+                            .param("isActive", "false")
+                            .param("keyword", "치킨")
+                            .param("addressKeyword", "종로구")
+                            .param("minRating", "4.0")
+                            .param("minReviewCount", "10")
+                            .param("maxMinOrderAmount", "20000")
+                            .param("createdAfter", "2026-04-01T00:00:00")
+                            .param("createdBefore", "2026-04-30T23:59:00"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true));
 
-            then(storeService).should().getStores(regionId, categoryId, null);
+            then(storeService).should().searchStores(
+                    eq(new StoreSearchCondition(
+                            regionId,
+                            categoryId,
+                            null,
+                            true,
+                            false,
+                            "치킨",
+                            "종로구",
+                            BigDecimal.valueOf(4.0),
+                            10,
+                            20000,
+                            createdAfter,
+                            createdBefore
+                    )),
+                    eq(PageRequest.of(0, 10, org.springframework.data.domain.Sort.Direction.DESC, "createdAt")),
+                    eq(UserRole.MANAGER)
+            );
         }
 
         @Test
@@ -247,7 +290,8 @@ class StoreControllerTest {
                     0
             );
 
-            given(storeService.getStores(null, null, userId)).willReturn(List.of(response));
+            given(storeService.searchStores(any(StoreSearchCondition.class), any(Pageable.class), any(UserRole.class)))
+                    .willReturn(new PageResponse<>(List.of(response), 0, 10, 1, 1, true));
 
             // when & then
             mockMvc.perform(get("/api/v1/stores")
@@ -255,9 +299,15 @@ class StoreControllerTest {
                             .param("userId", userId.toString()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data[0].userId").value(userId));
+                    .andExpect(jsonPath("$.data.content[0].userId").value(userId));
 
-            then(storeService).should().getStores(null, null, userId);
+            then(storeService).should().searchStores(
+                    eq(new StoreSearchCondition(
+                            null, null, userId, null, null, null, null, null, null, null, null, null
+                    )),
+                    eq(PageRequest.of(0, 10, org.springframework.data.domain.Sort.Direction.DESC, "createdAt")),
+                    eq(UserRole.CUSTOMER)
+            );
         }
 
         @Test

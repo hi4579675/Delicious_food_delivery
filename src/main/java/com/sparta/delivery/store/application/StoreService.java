@@ -1,7 +1,9 @@
 package com.sparta.delivery.store.application;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.region.domain.entity.Region;
 import com.sparta.delivery.region.domain.repository.RegionRepository;
+import com.sparta.delivery.store.application.dto.StoreSearchCondition;
 import com.sparta.delivery.store.domain.entity.Store;
 import com.sparta.delivery.store.domain.entity.StoreCategory;
 import com.sparta.delivery.store.domain.exception.InactiveStoreCategoryException;
@@ -17,11 +19,16 @@ import com.sparta.delivery.store.presentation.dto.StoreCreateRequest;
 import com.sparta.delivery.store.presentation.dto.StoreResponse;
 import com.sparta.delivery.store.presentation.dto.StoreUpdateRequest;
 import com.sparta.delivery.user.domain.entity.UserRole;
+
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +42,9 @@ public class StoreService {
     private final StoreCategoryRepository storeCategoryRepository;
     private final RegionRepository regionRepository;
 
-    /** 가게를 생성한다. */
+    /**
+     * 가게를 생성한다.
+     */
     @Transactional
     public StoreResponse createStore(Long userId, StoreCreateRequest request) {
         Region region = validateRegion(request.regionId());
@@ -69,33 +78,53 @@ public class StoreService {
         return StoreResponse.from(savedStore);
     }
 
-    /** 조건에 따라 가게 목록을 조회한다. */
-    public List<StoreResponse> getStores(UUID regionId, UUID categoryId, Long userId) {
-        List<Store> stores;
+    /**
+     * 조건에 따라 가게 목록을 조회한다.
+     */
+    public PageResponse<StoreResponse> searchStores(
+            StoreSearchCondition condition,
+            Pageable pageable,
+            UserRole actorRole
+    ) {
+        StoreSearchCondition normalizedCondition = condition == null
+                ? new StoreSearchCondition(null, null, null, null, null, null, null, null, null, null, null, null)
+                : condition;
 
-        if (userId != null) {
-            stores = storeRepository.findByUserId(userId);
-        } else if (regionId != null && categoryId != null) {
-            stores = storeRepository.findByRegionIdAndCategoryId(regionId, categoryId);
-        } else if (regionId != null) {
-            stores = storeRepository.findByRegionId(regionId);
-        } else if (categoryId != null) {
-            stores = storeRepository.findByCategoryId(categoryId);
-        } else {
-            stores = storeRepository.findAll();
+        Pageable normalizedPageable = Objects.requireNonNull(pageable, "페이지 정보는 null일 수 없습니다.");
+
+        if (actorRole != UserRole.MANAGER && actorRole != UserRole.MASTER) {
+            normalizedCondition = new StoreSearchCondition(
+                    normalizedCondition.regionId(),
+                    normalizedCondition.categoryId(),
+                    normalizedCondition.userId(),
+                    normalizedCondition.isOpen(),
+                    true,
+                    normalizedCondition.keyword(),
+                    normalizedCondition.addressKeyword(),
+                    normalizedCondition.minRating(),
+                    normalizedCondition.minReviewCount(),
+                    normalizedCondition.maxMinOrderAmount(),
+                    normalizedCondition.createdAfter(),
+                    normalizedCondition.createdBefore()
+            );
         }
 
-        return stores.stream()
-                .map(StoreResponse::from)
-                .toList();
+        Page<StoreResponse> page = storeRepository.searchStores(normalizedCondition, normalizedPageable)
+                .map(StoreResponse::from);
+
+        return PageResponse.from(page);
     }
 
-    /** 가게를 단건 조회한다. */
+    /**
+     * 가게를 단건 조회한다.
+     */
     public StoreResponse getStore(UUID storeId) {
         return StoreResponse.from(getStoreOrThrow(storeId));
     }
 
-    /** 가게 정보를 수정한다. */
+    /**
+     * 가게 정보를 수정한다.
+     */
     @Transactional
     public StoreResponse updateStore(
             UUID storeId,
@@ -133,7 +162,9 @@ public class StoreService {
         return StoreResponse.from(store);
     }
 
-    /** 가게를 삭제한다. */
+    /**
+     * 가게를 삭제한다.
+     */
     @Transactional
     public void deleteStore(UUID storeId, Long actorId, UserRole actorRole) {
         Store store = getStoreOrThrow(storeId);
