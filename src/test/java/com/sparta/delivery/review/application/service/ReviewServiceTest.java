@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,6 +42,8 @@ import com.sparta.delivery.review.domain.repository.ReviewRepository;
 import com.sparta.delivery.review.presentation.dto.request.ReviewCreateRequest;
 import com.sparta.delivery.review.presentation.dto.request.ReviewUpdateRequest;
 import com.sparta.delivery.review.presentation.dto.response.ReviewResponse;
+import com.sparta.delivery.store.domain.entity.Store;
+import com.sparta.delivery.store.domain.repository.StoreRepository;
 import com.sparta.delivery.user.domain.entity.UserRole;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,6 +54,9 @@ class ReviewServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private StoreRepository storeRepository;
 
     @InjectMocks
     private ReviewService reviewService;
@@ -66,10 +72,14 @@ class ReviewServiceTest {
             Long actorId = 1L;
             UUID orderId = UUID.randomUUID();
             Order order = createOrder(orderId, actorId, OrderStatus.COMPLETED);
+            Store store = createStore(order.getStoreId());
             ReviewCreateRequest request = new ReviewCreateRequest(orderId, 5, "  맛있어요  ");
 
             given(orderRepository.findById(orderId)).willReturn(Optional.of(order));
             given(reviewRepository.existsAnyByOrderIdIncludingDeleted(orderId)).willReturn(false);
+            given(storeRepository.findByStoreId(order.getStoreId())).willReturn(Optional.of(store));
+            given(reviewRepository.getStoreRatingSummary(order.getStoreId()))
+                    .willReturn(storeRatingSummary(5L, 1L));
             given(reviewRepository.save(any(Review.class))).willAnswer(invocation -> {
                 Review review = invocation.getArgument(0);
                 ReflectionTestUtils.setField(review, "reviewId", UUID.randomUUID());
@@ -85,6 +95,8 @@ class ReviewServiceTest {
             assertThat(response.userId()).isEqualTo(actorId);
             assertThat(response.rating()).isEqualTo(5);
             assertThat(response.content()).isEqualTo("맛있어요");
+            assertThat(store.getAvgRating()).isEqualByComparingTo("5.0");
+            assertThat(store.getReviewCount()).isEqualTo(1);
             then(reviewRepository).should().save(any(Review.class));
         }
 
@@ -294,10 +306,15 @@ class ReviewServiceTest {
             // given
             Long actorId = 1L;
             UUID reviewId = UUID.randomUUID();
-            Review review = createReview(reviewId, UUID.randomUUID(), UUID.randomUUID(), actorId, 3, "old");
+            UUID storeId = UUID.randomUUID();
+            Review review = createReview(reviewId, UUID.randomUUID(), storeId, actorId, 3, "old");
+            Store store = createStore(storeId);
             ReviewUpdateRequest request = new ReviewUpdateRequest(5, "  new content  ");
 
             given(reviewRepository.findByReviewId(reviewId)).willReturn(Optional.of(review));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
+            given(reviewRepository.getStoreRatingSummary(storeId))
+                    .willReturn(storeRatingSummary(5L, 1L));
 
             // when
             ReviewResponse response = reviewService.update(actorId, reviewId, UserRole.CUSTOMER, request);
@@ -305,6 +322,8 @@ class ReviewServiceTest {
             // then
             assertThat(response.rating()).isEqualTo(5);
             assertThat(response.content()).isEqualTo("new content");
+            assertThat(store.getAvgRating()).isEqualByComparingTo("5.0");
+            assertThat(store.getReviewCount()).isEqualTo(1);
         }
 
         @Test
@@ -360,8 +379,13 @@ class ReviewServiceTest {
             // given
             Long actorId = 1L;
             UUID reviewId = UUID.randomUUID();
-            Review review = createReview(reviewId, UUID.randomUUID(), UUID.randomUUID(), actorId, 4, "good");
+            UUID storeId = UUID.randomUUID();
+            Review review = createReview(reviewId, UUID.randomUUID(), storeId, actorId, 4, "good");
+            Store store = createStore(storeId);
             given(reviewRepository.findByReviewId(reviewId)).willReturn(Optional.of(review));
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
+            given(reviewRepository.getStoreRatingSummary(storeId))
+                    .willReturn(storeRatingSummary(0L, 0L));
 
             // when
             reviewService.delete(actorId, reviewId, UserRole.CUSTOMER);
@@ -369,6 +393,8 @@ class ReviewServiceTest {
             // then
             assertThat(review.isDeleted()).isTrue();
             assertThat(review.getDeletedBy()).isEqualTo(actorId);
+            assertThat(store.getAvgRating()).isEqualByComparingTo("0");
+            assertThat(store.getReviewCount()).isEqualTo(0);
         }
 
         @Test
@@ -463,5 +489,39 @@ class ReviewServiceTest {
         Review review = Review.create(orderId, storeId, userId, rating, content);
         ReflectionTestUtils.setField(review, "reviewId", reviewId);
         return review;
+    }
+
+    private Store createStore(UUID storeId) {
+        Store store = Store.create(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                2L,
+                "가게명",
+                "설명",
+                "서울시 종로구 1번지",
+                "101호",
+                "02-1111-2222",
+                12000,
+                true,
+                true,
+                BigDecimal.ZERO,
+                0
+        );
+        ReflectionTestUtils.setField(store, "storeId", storeId);
+        return store;
+    }
+
+    private ReviewRepository.StoreRatingSummary storeRatingSummary(long ratingSum, long reviewCount) {
+        return new ReviewRepository.StoreRatingSummary() {
+            @Override
+            public Long getRatingSum() {
+                return ratingSum;
+            }
+
+            @Override
+            public Long getReviewCount() {
+                return reviewCount;
+            }
+        };
     }
 }

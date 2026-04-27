@@ -1,5 +1,7 @@
 package com.sparta.delivery.review.application.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -29,6 +31,7 @@ import com.sparta.delivery.review.domain.repository.ReviewRepository;
 import com.sparta.delivery.review.presentation.dto.request.ReviewCreateRequest;
 import com.sparta.delivery.review.presentation.dto.request.ReviewUpdateRequest;
 import com.sparta.delivery.review.presentation.dto.response.ReviewResponse;
+import com.sparta.delivery.store.domain.repository.StoreRepository;
 import com.sparta.delivery.user.domain.entity.UserRole;
 
 @Service
@@ -43,6 +46,7 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final OrderRepository orderRepository;
+    private final StoreRepository storeRepository;
 
     @Transactional
     public ReviewResponse create(Long actorId, UserRole actorRole, ReviewCreateRequest request) {
@@ -66,14 +70,17 @@ public class ReviewService {
         }
 
         Review saved = Review.create(order.getOrderId(), order.getStoreId(), actorId, request.rating(),
-                        request.content());
+                request.content());
 
         try {
-            log.info("리뷰 생성 완료 - actorId={}, orderId={}", actorId, order.getOrderId());
-            return ReviewResponse.from(reviewRepository.save(saved));
+            saved = reviewRepository.save(saved);
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateReviewOrderException();
         }
+
+        refreshStoreRating(saved.getStoreId());
+        log.info("리뷰 생성 완료 - actorId={}, orderId={}", actorId, order.getOrderId());
+        return ReviewResponse.from(saved);
     }
 
     public ReviewResponse getByReviewId(UUID reviewId) {
@@ -119,6 +126,7 @@ public class ReviewService {
 
         review.update(request.rating(), request.content());
 
+        refreshStoreRating(review.getStoreId());
         log.info("리뷰 수정 완료 -  actorId={}, reviewId={}", actorId, reviewId);
         return ReviewResponse.from(review);
     }
@@ -137,8 +145,27 @@ public class ReviewService {
         }
 
         review.softDelete(actorId);
+        refreshStoreRating(review.getStoreId());
         log.info("리뷰 삭제 완료 - actorId={}, reviewId={}", actorId, reviewId);
 
+    }
+
+    private void refreshStoreRating(UUID storeId) {
+        storeRepository.findByStoreId(storeId).ifPresentOrElse(store -> {
+            ReviewRepository.StoreRatingSummary summary = reviewRepository.getStoreRatingSummary(storeId);
+            int reviewCount = Math.toIntExact(summary.getReviewCount());
+            BigDecimal avgRating = calculateAverageRating(summary.getRatingSum(), reviewCount);
+            store.updateRating(avgRating, reviewCount);
+        }, () -> log.warn("리뷰 평점 집계 갱신 건너뜀 - storeId={} (가게 없음)", storeId));
+    }
+
+    private BigDecimal calculateAverageRating(Long ratingSum, int reviewCount) {
+        if (reviewCount == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return BigDecimal.valueOf(ratingSum)
+                .divide(BigDecimal.valueOf(reviewCount), 1, RoundingMode.HALF_UP);
     }
 
     private Sort.Direction parseDirection(String direction) {
