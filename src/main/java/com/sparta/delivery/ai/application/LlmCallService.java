@@ -9,11 +9,13 @@ import com.sparta.delivery.ai.presentation.dto.response.LlmCallResponse;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -31,14 +33,23 @@ public class LlmCallService {
         return LlmCallResponse.from(call);
     }
 
-    public List<LlmCallListResponse> getLlmCalls(UserRole actorRole) {
+    public Page<LlmCallListResponse> getLlmCalls(UserRole actorRole, int page, int size, UUID llmId) {
         validateLlmCallPermission(actorRole);
-        return llmCallRepository.findAll(Sort.by(
-                        Sort.Order.desc("createdAt")
-                ))
-                .stream()
-                .map(LlmCallListResponse::from)
-                .toList();
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                normalizePageSize(size),
+                Sort.by(Sort.Order.desc("createdAt"))
+        );
+        if (llmId != null) {
+            return llmCallRepository.findByLlmId(llmId, pageable)
+                    .map(LlmCallListResponse::from);
+        }
+        return llmCallRepository.findAll(pageable)
+                .map(LlmCallListResponse::from);
+    }
+
+    private int normalizePageSize(int size) {
+        return (size == 10 || size == 30 || size == 50) ? size : 10;
     }
 
     private LlmCall getLlmCallOrThrow(UUID callId) {

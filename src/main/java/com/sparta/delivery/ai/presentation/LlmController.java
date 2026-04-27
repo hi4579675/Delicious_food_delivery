@@ -6,6 +6,7 @@ import com.sparta.delivery.ai.presentation.dto.request.LlmUpdateRequest;
 import com.sparta.delivery.ai.presentation.dto.response.LlmResponse;
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.common.response.ApiResponse;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,7 +18,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @PreAuthorize("hasAnyRole('MANAGER', 'MASTER')")
@@ -62,13 +62,16 @@ public class LlmController {
 
     @Operation(summary = "LLM 목록 조회")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<LlmResponse>>> getLlms(
-            @AuthenticationPrincipal UserPrincipal principal
+    public ResponseEntity<ApiResponse<PageResponse<LlmResponse>>> getLlms(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword
     ) {
-        List<LlmResponse> response = llmService.getLlms(
-                UserRole.valueOf(principal.getRole())
+        PageResponse<LlmResponse> response = PageResponse.from(
+                llmService.getLlms(UserRole.valueOf(principal.getRole()), page, size, sort, keyword)
         );
-
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

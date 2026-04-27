@@ -29,7 +29,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -118,20 +120,33 @@ class LlmServiceTest {
         }
 
         @Test
-        @DisplayName("reads llm list sorted by active and updatedAt")
+        @DisplayName("reads llm list with pagination")
         void getLlms_success() {
             Llm active = createLlm(UUID.randomUUID(), "gpt-4.1", LlmProvider.OPENAI, true);
             Llm inactive = createLlm(UUID.randomUUID(), "gpt-4.1-mini", LlmProvider.OPENAI, false);
-            given(llmRepository.findAll(eq(Sort.by(
-                    Sort.Order.desc("isActive"),
-                    Sort.Order.desc("updatedAt")
-            )))).willReturn(List.of(active, inactive));
+            given(llmRepository.findAll(any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(active, inactive)));
 
-            var responses = llmService.getLlms(UserRole.MANAGER);
+            Page<com.sparta.delivery.ai.presentation.dto.response.LlmResponse> responses =
+                    llmService.getLlms(UserRole.MANAGER, 0, 10, null, null);
 
-            assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).isActive()).isTrue();
-            assertThat(responses.get(1).isActive()).isFalse();
+            assertThat(responses.getContent()).hasSize(2);
+            assertThat(responses.getContent().get(0).isActive()).isTrue();
+            assertThat(responses.getContent().get(1).isActive()).isFalse();
+        }
+
+        @Test
+        @DisplayName("reads llm list filtered by keyword")
+        void getLlms_success_withKeyword() {
+            Llm llm = createLlm(UUID.randomUUID(), "gpt-4.1-mini", LlmProvider.OPENAI, false);
+            given(llmRepository.findByLlmNameContainingIgnoreCase(eq("mini"), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(llm)));
+
+            Page<com.sparta.delivery.ai.presentation.dto.response.LlmResponse> responses =
+                    llmService.getLlms(UserRole.MANAGER, 0, 10, null, "mini");
+
+            assertThat(responses.getContent()).hasSize(1);
+            assertThat(responses.getContent().get(0).llmName()).isEqualTo("gpt-4.1-mini");
         }
     }
 

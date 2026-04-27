@@ -5,6 +5,7 @@ import com.sparta.delivery.ai.presentation.dto.response.LlmCallListResponse;
 import com.sparta.delivery.ai.presentation.dto.response.LlmCallResponse;
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.common.response.ApiResponse;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,9 +16,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -44,11 +45,15 @@ public class LlmCallController {
 
     @Operation(summary = "LLM 호출 로그 목록 조회")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<LlmCallListResponse>>> getLlmCalls(
-            @AuthenticationPrincipal UserPrincipal principal
+    public ResponseEntity<ApiResponse<PageResponse<LlmCallListResponse>>> getLlmCalls(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) UUID llmId
     ) {
-        List<LlmCallListResponse> response = llmCallService.getLlmCalls(UserRole.valueOf(principal.getRole()));
-
+        PageResponse<LlmCallListResponse> response = PageResponse.from(
+                llmCallService.getLlmCalls(UserRole.valueOf(principal.getRole()), page, size, llmId)
+        );
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

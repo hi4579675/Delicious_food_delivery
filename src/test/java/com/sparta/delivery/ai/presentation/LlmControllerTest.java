@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -122,17 +123,18 @@ class LlmControllerTest {
         @Test
         @DisplayName("manager can read llm list")
         void getLlms_success() throws Exception {
-            LlmResponse response = llmResponse(UUID.randomUUID(), "gpt-4.1-mini", LlmProvider.OPENAI, false);
+            LlmResponse item = llmResponse(UUID.randomUUID(), "gpt-4.1-mini", LlmProvider.OPENAI, false);
 
-            given(llmService.getLlms(UserRole.MANAGER)).willReturn(List.of(response));
+            given(llmService.getLlms(UserRole.MANAGER, 0, 10, null, null))
+                    .willReturn(new PageImpl<>(List.of(item)));
 
             mockMvc.perform(get("/api/v1/llms")
                             .with(authentication(authenticationToken(UserRole.MANAGER))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data[0].llmName").value("gpt-4.1-mini"));
+                    .andExpect(jsonPath("$.data.content[0].llmName").value("gpt-4.1-mini"));
 
-            then(llmService).should().getLlms(UserRole.MANAGER);
+            then(llmService).should().getLlms(UserRole.MANAGER, 0, 10, null, null);
         }
 
         @Test
