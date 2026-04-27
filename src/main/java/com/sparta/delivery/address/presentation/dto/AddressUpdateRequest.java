@@ -17,4 +17,26 @@ public record AddressUpdateRequest(
         @Size(max = 10, message = "우편번호는 10자 이하여야 합니다.")
         String zipCode
 ) {
+    public AddressUpdateRequest {
+        alias = normalizeOptional(alias);
+        address = normalizeRequired(address);
+        detail = normalizeOptional(detail);
+        zipCode = normalizeOptional(zipCode);
+    }
+
+    private static String normalizeRequired(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
 }
