@@ -4,6 +4,8 @@ import com.sparta.delivery.ai.domain.exception.InvalidCreatedByException;
 import com.sparta.delivery.ai.domain.exception.InvalidInputSnapshotException;
 import com.sparta.delivery.ai.domain.exception.InvalidProviderStatusCodeException;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -30,6 +32,7 @@ public class LlmCall {
     private UUID productId;
 
     @Column(name = "input_snapshot", nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String inputSnapshot;
 
     @Column(name = "provider_status_code", length = 50)
