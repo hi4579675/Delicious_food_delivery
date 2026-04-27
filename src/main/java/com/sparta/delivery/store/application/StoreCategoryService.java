@@ -1,5 +1,6 @@
 package com.sparta.delivery.store.application;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.store.domain.entity.StoreCategory;
 import com.sparta.delivery.store.domain.exception.DuplicateCategoryNameException;
 import com.sparta.delivery.store.domain.exception.DuplicateCategorySortOrderException;
@@ -12,6 +13,8 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -62,18 +65,28 @@ public class StoreCategoryService {
         }
     }
 
-    /** 가게 카테고리 목록을 조회한다. */
-    public List<StoreCategoryResponse> getCategories() {
-        return storeCategoryRepository.findAllByOrderBySortOrderAsc().stream()
-                .map(StoreCategoryResponse::from)
-                .toList();
+    /** 활성화된 가게 카테고리 목록을 조회한다. */
+    public PageResponse<StoreCategoryResponse> getCategories(Pageable pageable) {
+        Page<StoreCategoryResponse> page = storeCategoryRepository.findAllByIsActiveTrue(pageable)
+                .map(StoreCategoryResponse::from);
+
+        return PageResponse.from(page);
     }
 
-    /** 활성화된 가게 카테고리 목록을 조회한다. */
-    public List<StoreCategoryResponse> getActiveCategories() {
-        return storeCategoryRepository.findAllByIsActiveTrueOrderBySortOrderAsc().stream()
-                .map(StoreCategoryResponse::from)
-                .toList();
+    /** 비활성화된 가게 카테고리 목록을 조회한다. */
+    public PageResponse<StoreCategoryResponse> getInactiveCategories(Pageable pageable) {
+        Page<StoreCategoryResponse> page = storeCategoryRepository.findAllByIsActiveFalse(pageable)
+                .map(StoreCategoryResponse::from);
+
+        return PageResponse.from(page);
+    }
+
+    /** 전체 가게 카테고리 목록을 조회한다. */
+    public PageResponse<StoreCategoryResponse> getAllCategories(Pageable pageable) {
+        Page<StoreCategoryResponse> page = storeCategoryRepository.findAll(pageable)
+                .map(StoreCategoryResponse::from);
+
+        return PageResponse.from(page);
     }
 
     /** 가게 카테고리를 단건 조회한다. */

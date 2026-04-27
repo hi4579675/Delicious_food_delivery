@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Lock;
@@ -34,7 +35,7 @@ public interface StoreCategoryRepository extends JpaRepository<StoreCategory, UU
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<StoreCategory> findAllByOrderBySortOrderDesc(Pageable pageable);
 
-    List<StoreCategory> findAllByOrderBySortOrderAsc();
+    Page<StoreCategory> findAllByIsActiveFalse(Pageable pageable);
 
-    List<StoreCategory> findAllByIsActiveTrueOrderBySortOrderAsc();
+    Page<StoreCategory> findAllByIsActiveTrue(Pageable pageable);
 }
