@@ -46,7 +46,8 @@ public class Review extends BaseEntity {
             String content
     ) {
         String normalizedContent = normalizeOptional(content);
-        validate(rating, content);
+        validate(rating, normalizedContent);
+      
         return Review.builder()
                 .orderId(orderId)
                 .storeId(storeId)
@@ -56,9 +57,9 @@ public class Review extends BaseEntity {
                 .build();
     }
 
-    private static void validate(Integer rating, String content) {
+    private static void validate(Integer rating, String normalizedContent) {
         validateRating(rating);
-        validateContent(content);
+        validateContent(normalizedContent);
     }
 
     private static void validateRating(Integer rating) {
@@ -67,10 +68,8 @@ public class Review extends BaseEntity {
         }
     }
 
-    private static void validateContent(String content) {
-        String value = normalizeOptional(content);
-
-        if (value != null && value.length() > 500) {
+    private static void validateContent(String normalizedContent) {
+        if (normalizedContent != null && normalizedContent.length() > 500) {
             throw new InvalidContentException();
         }
     }
@@ -107,7 +106,8 @@ public class Review extends BaseEntity {
     public void update(Integer rating, String content) {
 
         String normalizedContent = normalizeOptional(content);
-        validate(rating, content);
+        validate(rating, normalizedContent);
+
         this.rating = rating;
         this.content = normalizedContent;
 
