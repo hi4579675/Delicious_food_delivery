@@ -62,10 +62,10 @@ public class ReviewController {
     }
 
     @Operation(summary = "가게 리뷰 목록 조회")
-    @GetMapping("/stores/{storeId}/reviews")
+    @GetMapping("/reviews")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'OWNER', 'MANAGER', 'MASTER')")
     public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getReviews(
-            @PathVariable UUID storeId,
+            @RequestParam UUID storeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,

@@ -191,7 +191,8 @@ class ReviewControllerTest {
             given(reviewService.getReviews(storeId, 0, 10, "createdAt", "desc")).willReturn(pageResponse);
 
             // when & then
-            mockMvc.perform(get("/api/v1/stores/{storeId}/reviews", storeId)
+            mockMvc.perform(get("/api/v1/reviews")
+                            .param("storeId", storeId.toString())
                             .with(authentication(authenticationToken(UserRole.CUSTOMER))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
