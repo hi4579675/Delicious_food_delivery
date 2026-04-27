@@ -11,6 +11,7 @@ import com.sparta.delivery.region.presentation.dto.RegionCreateRequest;
 import com.sparta.delivery.region.presentation.dto.RegionResponse;
 import com.sparta.delivery.region.presentation.dto.RegionUpdateRequest;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -97,6 +98,7 @@ public class RegionService {
             throw new InvalidParentRegionException();
         }
 
+        validateRegionHierarchyChange(region, request.parentId(), request.depth());
         validateParentAndDepth(request.parentId(), request.depth());
 
         region.update(
@@ -142,13 +144,22 @@ public class RegionService {
 
     /** 지역 코드 중복 검사 */
     private void validateDuplicateRegionCode(String regionCode) {
-        if (regionRepository.existsByRegionCode(regionCode)) {
+        if (regionRepository.existsByRegionCodeIncludingDeleted(regionCode)) {
             throw new DuplicateRegionCodeException();
         }
     }
 
     private String normalize(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private void validateRegionHierarchyChange(Region region, UUID parentId, Integer depth) {
+        boolean hierarchyChanged = !Objects.equals(region.getParentId(), parentId)
+                || !region.getDepth().equals(depth);
+
+        if (hierarchyChanged && !regionRepository.findByParentId(region.getRegionId()).isEmpty()) {
+            throw new RegionHasChildrenException();
+        }
     }
 
     /** 부모 지역과 depth 규칙 검사 */

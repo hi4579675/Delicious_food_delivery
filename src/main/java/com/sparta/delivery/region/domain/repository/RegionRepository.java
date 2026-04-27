@@ -5,10 +5,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface RegionRepository extends JpaRepository<Region, UUID> {
 
     boolean existsByRegionCode(String regionCode);
+
+    @Query(
+            value = "select exists (select 1 from p_region where region_code = :regionCode)",
+            nativeQuery = true
+    )
+    boolean existsByRegionCodeIncludingDeleted(@Param("regionCode") String regionCode);
 
     Optional<Region> findByRegionId(UUID regionId);
 
