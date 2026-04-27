@@ -45,7 +45,7 @@ public class LlmOrchestrator {
         LlmCall llmCall = LlmCall.create(
                 activeLlm.getLlmId(),
                 serializedInputSnapshot,
-                response.providerStatusCode(),
+                response.finishReason(),
                 response.rawResponse(),
                 response.generatedText(),
                 actorId

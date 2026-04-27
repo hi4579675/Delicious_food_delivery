@@ -1,5 +1,7 @@
 package com.sparta.delivery.ai.infrastructure.external.llm.openai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.delivery.ai.domain.entity.Llm;
 import com.sparta.delivery.ai.domain.entity.LlmProvider;
 import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
@@ -8,6 +10,7 @@ import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateRequest;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Component;
 public class OpenAiClient implements LlmClient {
 
     private final ChatClient.Builder chatClientBuilder;
+    private final ObjectMapper objectMapper;
 
     @Override
     public boolean supports(LlmProvider provider) {
@@ -25,7 +29,7 @@ public class OpenAiClient implements LlmClient {
     @Override
     public LlmGenerateResponse generate(Llm llm, LlmGenerateRequest request) {
         try {
-            String content = chatClientBuilder.build()
+            ChatResponse chatResponse = chatClientBuilder.build()
                     .prompt()
                     .options(OpenAiChatOptions.builder()
                             .model(llm.getLlmName())
@@ -38,12 +42,25 @@ public class OpenAiClient implements LlmClient {
                         """)
                     .user(request.prompt())
                     .call()
-                    .content();
+                    .chatResponse();
+
+            String rawResponse;
+            try {
+                rawResponse = objectMapper.writeValueAsString(chatResponse);
+            } catch (JsonProcessingException e) {
+                rawResponse = null;
+            }
+
+            String content = chatResponse.getResult().getOutput().getText();
+
+            String finishReason = chatResponse.getResult()
+                    .getMetadata()
+                    .getFinishReason();
 
             return new LlmGenerateResponse(
                     content,
-                    null,
-                    "200"
+                    rawResponse,
+                    finishReason
             );
         } catch (Exception e) {
             throw new ExternalLlmCallFailedException();

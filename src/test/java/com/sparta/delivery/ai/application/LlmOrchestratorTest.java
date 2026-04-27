@@ -95,7 +95,7 @@ class LlmOrchestratorTest {
             assertThat(savedCall.getLlmId()).isEqualTo(llmId);
             assertThat(savedCall.getProductId()).isNull();
             assertThat(savedCall.getInputSnapshot()).isEqualTo(inputSnapshot);
-            assertThat(savedCall.getProviderStatusCode()).isEqualTo("200");
+            assertThat(savedCall.getFinishReason()).isEqualTo("200");
             assertThat(savedCall.getRawResponse()).isEqualTo("{\"result\":\"ok\"}");
             assertThat(savedCall.getGeneratedText()).isEqualTo("generated text");
             assertThat(savedCall.getCreatedBy()).isEqualTo(actorId);

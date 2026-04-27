@@ -59,7 +59,7 @@ class LlmCallControllerTest {
                     UUID.randomUUID(),
                     UUID.randomUUID(),
                     "{\"productName\":\"Americano\"}",
-                    "200",
+                    "STOP",
                     "{\"result\":\"ok\"}",
                     "generated description",
                     LocalDateTime.now(),
@@ -73,7 +73,7 @@ class LlmCallControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.callId").value(callId.toString()))
-                    .andExpect(jsonPath("$.data.providerStatusCode").value("200"));
+                    .andExpect(jsonPath("$.data.finishReason").value("STOP"));
 
             then(llmCallService).should().getLlmCall(UserRole.MANAGER, callId);
         }
@@ -85,7 +85,7 @@ class LlmCallControllerTest {
                     UUID.randomUUID(),
                     UUID.randomUUID(),
                     UUID.randomUUID(),
-                    "200",
+                    "STOP",
                     LocalDateTime.now()
             );
 
@@ -95,7 +95,7 @@ class LlmCallControllerTest {
                             .with(authentication(authenticationToken(UserRole.MANAGER))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data[0].providerStatusCode").value("200"));
+                    .andExpect(jsonPath("$.data[0].finishReason").value("STOP"));
 
             then(llmCallService).should().getLlmCalls(UserRole.MANAGER);
         }

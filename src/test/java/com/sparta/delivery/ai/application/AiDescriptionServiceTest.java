@@ -41,7 +41,7 @@ class AiDescriptionServiceTest {
             LlmGenerateResponse response = new LlmGenerateResponse(
                     "generated text",
                     "{\"result\":\"ok\"}",
-                    "200"
+                    "STOP"
             );
 
             given(llmOrchestrator.generate(eq(actorId), any(LlmInputSnapshot.class))).willReturn(response);

@@ -53,7 +53,7 @@ class LlmCallServiceTest {
             // then
             assertThat(response.callId()).isEqualTo(callId);
             assertThat(response.inputSnapshot()).isEqualTo("{\"productName\":\"Americano\"}");
-            assertThat(response.providerStatusCode()).isEqualTo("200");
+            assertThat(response.finishReason()).isEqualTo("STOP");
         }
 
         @Test
@@ -115,7 +115,7 @@ class LlmCallServiceTest {
         LlmCall llmCall = LlmCall.create(
                 UUID.randomUUID(),
                 "{\"productName\":\"Americano\"}",
-                "200",
+                "STOP",
                 "{\"result\":\"ok\"}",
                 "generated description",
                 1L

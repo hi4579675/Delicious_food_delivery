@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import com.sparta.delivery.ai.domain.exception.AiErrorCode;
 import com.sparta.delivery.ai.domain.exception.InvalidCreatedByException;
 import com.sparta.delivery.ai.domain.exception.InvalidInputSnapshotException;
-import com.sparta.delivery.ai.domain.exception.InvalidProviderStatusCodeException;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -20,7 +20,7 @@ class LlmCallTest {
         // given
         UUID llmId = UUID.randomUUID();
         String inputSnapshot = "{\"productName\":\"Americano\",\"price\":4500}";
-        String providerStatusCode = "200";
+        String finishReason = "STOP";
         String rawResponse = "{\"result\":\"ok\"}";
         String generatedText = "generated text";
         Long createdBy = 1L;
@@ -31,7 +31,7 @@ class LlmCallTest {
         LlmCall llmCall = LlmCall.create(
                 llmId,
                 inputSnapshot,
-                providerStatusCode,
+                finishReason,
                 rawResponse,
                 generatedText,
                 createdBy
@@ -43,7 +43,7 @@ class LlmCallTest {
         assertThat(llmCall.getLlmId()).isEqualTo(llmId);
         assertThat(llmCall.getProductId()).isNull();
         assertThat(llmCall.getInputSnapshot()).isEqualTo(inputSnapshot);
-        assertThat(llmCall.getProviderStatusCode()).isEqualTo(providerStatusCode);
+        assertThat(llmCall.getFinishReason()).isEqualTo(finishReason);
         assertThat(llmCall.getRawResponse()).isEqualTo(rawResponse);
         assertThat(llmCall.getGeneratedText()).isEqualTo(generatedText);
         assertThat(llmCall.getCreatedBy()).isEqualTo(createdBy);
@@ -58,7 +58,7 @@ class LlmCallTest {
         Throwable thrown = catchThrowable(() -> LlmCall.create(
                 UUID.randomUUID(),
                 "   ",
-                "200",
+                "STOP",
                 "{}",
                 "generated",
                 1L
@@ -71,32 +71,13 @@ class LlmCallTest {
     }
 
     @Test
-    @DisplayName("create should throw when providerStatusCode length exceeds 50")
-    void create_shouldThrow_whenProviderStatusCodeLengthExceeds50() {
-        // when
-        Throwable thrown = catchThrowable(() -> LlmCall.create(
-                UUID.randomUUID(),
-                "{\"productName\":\"Americano\"}",
-                "1".repeat(51),
-                "{}",
-                "generated",
-                1L
-        ));
-
-        // then
-        assertThat(thrown).isInstanceOf(InvalidProviderStatusCodeException.class);
-        InvalidProviderStatusCodeException exception = (InvalidProviderStatusCodeException) thrown;
-        assertThat(exception.getCode()).isEqualTo(AiErrorCode.INVALID_PROVIDER_STATUS_CODE.getCode());
-    }
-
-    @Test
     @DisplayName("create should throw when createdBy is null")
     void create_shouldThrow_whenCreatedByIsNull() {
         // when
         Throwable thrown = catchThrowable(() -> LlmCall.create(
                 UUID.randomUUID(),
                 "{\"productName\":\"Americano\"}",
-                "200",
+                "STOP",
                 "{}",
                 "generated",
                 null
