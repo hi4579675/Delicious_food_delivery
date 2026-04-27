@@ -59,11 +59,11 @@ class LlmControllerTest {
     private UserService userService;
 
     @Nested
-    @DisplayName("LLM 관리 API")
+    @DisplayName("LLM management API")
     class LlmApi {
 
         @Test
-        @DisplayName("MANAGER 권한이면 LLM을 생성한다")
+        @DisplayName("manager can create llm")
         void createLlm_success() throws Exception {
             UUID llmId = UUID.randomUUID();
             LlmCreateRequest request = new LlmCreateRequest("gpt-4.1-mini", LlmProvider.OPENAI);
@@ -87,7 +87,7 @@ class LlmControllerTest {
         }
 
         @Test
-        @DisplayName("llmName이 비어 있으면 400을 반환한다")
+        @DisplayName("returns 400 when llmName is blank")
         void createLlm_fail_whenLlmNameBlank() throws Exception {
             LlmCreateRequest request = new LlmCreateRequest("", LlmProvider.OPENAI);
 
@@ -102,7 +102,7 @@ class LlmControllerTest {
         }
 
         @Test
-        @DisplayName("MANAGER 권한이면 LLM 단건을 조회한다")
+        @DisplayName("manager can read llm detail")
         void getLlm_success() throws Exception {
             UUID llmId = UUID.randomUUID();
             LlmResponse response = llmResponse(llmId, "gpt-4.1-mini", LlmProvider.OPENAI, false);
@@ -120,7 +120,7 @@ class LlmControllerTest {
         }
 
         @Test
-        @DisplayName("MANAGER 권한이면 LLM 목록을 조회한다")
+        @DisplayName("manager can read llm list")
         void getLlms_success() throws Exception {
             LlmResponse response = llmResponse(UUID.randomUUID(), "gpt-4.1-mini", LlmProvider.OPENAI, false);
 
@@ -136,7 +136,7 @@ class LlmControllerTest {
         }
 
         @Test
-        @DisplayName("MANAGER 권한이면 LLM 이름을 변경한다")
+        @DisplayName("manager can change llm name")
         void changeLlmName_success() throws Exception {
             UUID llmId = UUID.randomUUID();
             LlmUpdateRequest request = new LlmUpdateRequest("gpt-4.1");
@@ -158,7 +158,26 @@ class LlmControllerTest {
         }
 
         @Test
-        @DisplayName("MANAGER 권한이면 LLM을 삭제한다")
+        @DisplayName("manager can activate llm")
+        void activateLlm_success() throws Exception {
+            UUID llmId = UUID.randomUUID();
+            LlmResponse response = llmResponse(llmId, "gpt-4.1-mini", LlmProvider.OPENAI, true);
+
+            given(llmService.activate(1L, UserRole.MANAGER, llmId)).willReturn(response);
+
+            mockMvc.perform(patch("/api/v1/llms/{llmId}/activate", llmId)
+                            .with(csrf())
+                            .with(authentication(authenticationToken(UserRole.MANAGER))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.llmId").value(llmId.toString()))
+                    .andExpect(jsonPath("$.data.isActive").value(true));
+
+            then(llmService).should().activate(1L, UserRole.MANAGER, llmId);
+        }
+
+        @Test
+        @DisplayName("manager can delete llm")
         void deleteLlm_success() throws Exception {
             UUID llmId = UUID.randomUUID();
             LlmResponse response = llmResponse(llmId, "gpt-4.1-mini", LlmProvider.OPENAI, false);

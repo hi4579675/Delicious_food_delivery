@@ -47,6 +47,7 @@ public class Review extends BaseEntity {
     ) {
         String normalizedContent = normalizeOptional(content);
         validate(rating, normalizedContent);
+      
         return Review.builder()
                 .orderId(orderId)
                 .storeId(storeId)
@@ -106,6 +107,7 @@ public class Review extends BaseEntity {
 
         String normalizedContent = normalizeOptional(content);
         validate(rating, normalizedContent);
+
         this.rating = rating;
         this.content = normalizedContent;
 
