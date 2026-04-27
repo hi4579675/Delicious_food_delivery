@@ -3,10 +3,12 @@ package com.sparta.delivery.store.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.never;
 import static org.mockito.BDDMockito.then;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.region.domain.entity.Region;
 import com.sparta.delivery.region.domain.repository.RegionRepository;
 import com.sparta.delivery.store.domain.entity.Store;
@@ -21,6 +23,8 @@ import com.sparta.delivery.store.domain.exception.StoreRegionNotFoundException;
 import com.sparta.delivery.store.domain.repository.StoreCategoryRepository;
 import com.sparta.delivery.store.domain.repository.StoreRepository;
 import com.sparta.delivery.store.presentation.dto.StoreCreateRequest;
+import com.sparta.delivery.store.presentation.dto.StoreResponse;
+import com.sparta.delivery.store.presentation.dto.StoreSearchCondition;
 import com.sparta.delivery.store.presentation.dto.StoreUpdateRequest;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import java.math.BigDecimal;
@@ -34,6 +38,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -272,89 +279,60 @@ class StoreServiceTest {
 
         @Test
         @DisplayName("조건이 없으면 전체 가게 목록을 조회한다")
-        void getStores_success_withoutCondition() {
+        void searchStores_success_withoutCondition() {
             // given
             Store store = createStoreEntity(UUID.randomUUID(), UUID.randomUUID(), 1L);
-            given(storeRepository.findAll()).willReturn(List.of(store));
+            StoreSearchCondition condition = new StoreSearchCondition(
+                    null, null, null, null, null, null, null, null, null, null, null
+            );
+            Pageable pageable = PageRequest.of(0, 10);
+            given(storeRepository.searchStores(condition, pageable))
+                    .willReturn(new PageImpl<>(List.of(store), pageable, 1));
 
             // when
-            var responses = storeService.getStores(null, null, null);
+            PageResponse<StoreResponse> response = storeService.searchStores(condition, pageable);
 
             // then
-            assertThat(responses).hasSize(1);
-            assertThat(responses.get(0).storeName()).isEqualTo("왕조치킨");
+            assertThat(response.content()).hasSize(1);
+            assertThat(response.content().get(0).storeName()).isEqualTo("왕조치킨");
+            assertThat(response.page()).isEqualTo(0);
+            assertThat(response.size()).isEqualTo(10);
+            assertThat(response.totalElements()).isEqualTo(1);
 
-            then(storeRepository).should().findAll();
+            then(storeRepository).should().searchStores(condition, pageable);
         }
 
         @Test
-        @DisplayName("지역 조건으로 가게 목록을 조회한다")
-        void getStores_success_byRegion() {
-            // given
-            UUID regionId = UUID.randomUUID();
-            Store store = createStoreEntity(regionId, UUID.randomUUID(), 1L);
-
-            given(storeRepository.findByRegionId(regionId)).willReturn(List.of(store));
-
-            // when
-            var responses = storeService.getStores(regionId, null, null);
-
-            // then
-            assertThat(responses).hasSize(1);
-            then(storeRepository).should().findByRegionId(regionId);
-        }
-
-        @Test
-        @DisplayName("카테고리 조건으로 가게 목록을 조회한다")
-        void getStores_success_byCategory() {
-            // given
-            UUID categoryId = UUID.randomUUID();
-            Store store = createStoreEntity(UUID.randomUUID(), categoryId, 1L);
-
-            given(storeRepository.findByCategoryId(categoryId)).willReturn(List.of(store));
-
-            // when
-            var responses = storeService.getStores(null, categoryId, null);
-
-            // then
-            assertThat(responses).hasSize(1);
-            then(storeRepository).should().findByCategoryId(categoryId);
-        }
-
-        @Test
-        @DisplayName("지역과 카테고리 조건으로 가게 목록을 조회한다")
-        void getStores_success_byRegionAndCategory() {
+        @DisplayName("조건 객체로 가게 목록을 조회한다")
+        void searchStores_success_withCondition() {
             // given
             UUID regionId = UUID.randomUUID();
             UUID categoryId = UUID.randomUUID();
-            Store store = createStoreEntity(regionId, categoryId, 1L);
-
-            given(storeRepository.findByRegionIdAndCategoryId(regionId, categoryId))
-                    .willReturn(List.of(store));
-
-            // when
-            var responses = storeService.getStores(regionId, categoryId, null);
-
-            // then
-            assertThat(responses).hasSize(1);
-            then(storeRepository).should().findByRegionIdAndCategoryId(regionId, categoryId);
-        }
-
-        @Test
-        @DisplayName("사용자 조건으로 가게 목록을 조회한다")
-        void getStores_success_byUserId() {
-            // given
             Long userId = 1L;
-            Store store = createStoreEntity(UUID.randomUUID(), UUID.randomUUID(), userId);
-
-            given(storeRepository.findByUserId(userId)).willReturn(List.of(store));
+            Store store = createStoreEntity(regionId, categoryId, userId);
+            StoreSearchCondition condition = new StoreSearchCondition(
+                    regionId,
+                    categoryId,
+                    userId,
+                    true,
+                    "왕조",
+                    "종로구",
+                    BigDecimal.valueOf(4.0),
+                    10,
+                    20000,
+                    null,
+                    null
+            );
+            Pageable pageable = PageRequest.of(0, 10);
+            given(storeRepository.searchStores(condition, pageable))
+                    .willReturn(new PageImpl<>(List.of(store), pageable, 1));
 
             // when
-            var responses = storeService.getStores(null, null, userId);
+            PageResponse<StoreResponse> response = storeService.searchStores(condition, pageable);
 
             // then
-            assertThat(responses).hasSize(1);
-            then(storeRepository).should().findByUserId(userId);
+            assertThat(response.content()).hasSize(1);
+            then(storeRepository).should().searchStores(condition, pageable);
         }
     }
 

@@ -2,21 +2,27 @@ package com.sparta.delivery.store.presentation;
 
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.common.response.ApiResponse;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.store.application.StoreService;
 import com.sparta.delivery.store.presentation.dto.StoreCreateRequest;
 import com.sparta.delivery.store.presentation.dto.StoreResponse;
+import com.sparta.delivery.store.presentation.dto.StoreSearchCondition;
 import com.sparta.delivery.store.presentation.dto.StoreUpdateRequest;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,12 +55,36 @@ public class StoreController {
 
     @Operation(summary = "가게 목록 조회")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<StoreResponse>>> getStores(
+    public ResponseEntity<ApiResponse<PageResponse<StoreResponse>>> getStores(
             @RequestParam(required = false) UUID regionId,
             @RequestParam(required = false) UUID categoryId,
-            @RequestParam(required = false) Long userId
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Boolean isOpen,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String addressKeyword,
+            @RequestParam(required = false) BigDecimal minRating,
+            @RequestParam(required = false) Integer minReviewCount,
+            @RequestParam(required = false) Integer maxMinOrderAmount,
+            @RequestParam(required = false) LocalDateTime createdAfter,
+            @RequestParam(required = false) LocalDateTime createdBefore,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable
     ) {
-        return ResponseEntity.ok(ApiResponse.success(storeService.getStores(regionId, categoryId, userId)));
+        StoreSearchCondition condition = new StoreSearchCondition(
+                regionId,
+                categoryId,
+                userId,
+                isOpen,
+                keyword,
+                addressKeyword,
+                minRating,
+                minReviewCount,
+                maxMinOrderAmount,
+                createdAfter,
+                createdBefore
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(storeService.searchStores(condition, pageable)));
     }
 
     @Operation(summary = "가게 단건 조회")

@@ -1,5 +1,6 @@
 package com.sparta.delivery.store.application;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.region.domain.entity.Region;
 import com.sparta.delivery.region.domain.repository.RegionRepository;
 import com.sparta.delivery.store.domain.entity.Store;
@@ -15,13 +16,17 @@ import com.sparta.delivery.store.domain.repository.StoreCategoryRepository;
 import com.sparta.delivery.store.domain.repository.StoreRepository;
 import com.sparta.delivery.store.presentation.dto.StoreCreateRequest;
 import com.sparta.delivery.store.presentation.dto.StoreResponse;
+import com.sparta.delivery.store.presentation.dto.StoreSearchCondition;
 import com.sparta.delivery.store.presentation.dto.StoreUpdateRequest;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,24 +75,17 @@ public class StoreService {
     }
 
     /** 조건에 따라 가게 목록을 조회한다. */
-    public List<StoreResponse> getStores(UUID regionId, UUID categoryId, Long userId) {
-        List<Store> stores;
+    public PageResponse<StoreResponse> searchStores(StoreSearchCondition condition, Pageable pageable) {
+        StoreSearchCondition normalizedCondition = condition == null
+                ? new StoreSearchCondition(null, null, null, null, null, null, null, null, null, null, null)
+                : condition;
 
-        if (userId != null) {
-            stores = storeRepository.findByUserId(userId);
-        } else if (regionId != null && categoryId != null) {
-            stores = storeRepository.findByRegionIdAndCategoryId(regionId, categoryId);
-        } else if (regionId != null) {
-            stores = storeRepository.findByRegionId(regionId);
-        } else if (categoryId != null) {
-            stores = storeRepository.findByCategoryId(categoryId);
-        } else {
-            stores = storeRepository.findAll();
-        }
+        Pageable normalizedPageable = Objects.requireNonNull(pageable, "pageable must not be null");
 
-        return stores.stream()
-                .map(StoreResponse::from)
-                .toList();
+        Page<StoreResponse> page = storeRepository.searchStores(normalizedCondition, normalizedPageable)
+                .map(StoreResponse::from);
+
+        return PageResponse.from(page);
     }
 
     /** 가게를 단건 조회한다. */
