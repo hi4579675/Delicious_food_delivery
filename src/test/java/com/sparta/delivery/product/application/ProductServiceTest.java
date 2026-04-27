@@ -10,6 +10,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import com.sparta.delivery.ai.application.AiDescriptionService;
+import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
 import com.sparta.delivery.product.domain.entity.DescriptionSource;
 import com.sparta.delivery.product.domain.entity.Product;
 import com.sparta.delivery.product.domain.exception.DuplicateProductNameException;
@@ -119,6 +120,81 @@ class ProductServiceTest {
             // when & then
             assertThatThrownBy(() -> productService.create(ownerId, UserRole.OWNER, storeId, request))
                     .isInstanceOf(DuplicateProductNameException.class);
+            then(productRepository).should(never()).save(any(Product.class));
+        }
+
+        @Test
+        @DisplayName("creates a product with AI generated description")
+        void create_success_aiGeneratedDescription() {
+            // given
+            Long ownerId = 1L;
+            UUID storeId = UUID.randomUUID();
+            Store store = createStore(storeId, ownerId);
+            ProductCreateRequest request = new ProductCreateRequest(
+                    "Americano",
+                    4500,
+                    null,
+                    1,
+                    true,
+                    "고소한 맛을 강조해줘"
+            );
+
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
+            given(productRepository.existsByStoreIdAndProductName(storeId, "Americano")).willReturn(false);
+            given(aiDescriptionService.generateDescription(
+                    ownerId,
+                    "Americano",
+                    4500,
+                    "고소한 맛을 강조해줘"
+            )).willReturn("AI generated description");
+            given(productRepository.save(any(Product.class))).willAnswer(invocation -> {
+                Product product = invocation.getArgument(0);
+                ReflectionTestUtils.setField(product, "productId", UUID.randomUUID());
+                return product;
+            });
+
+            // when
+            var response = productService.create(ownerId, UserRole.OWNER, storeId, request);
+
+            // then
+            assertThat(response.description()).isEqualTo("AI generated description");
+            assertThat(response.descriptionSource()).isEqualTo(DescriptionSource.AI_GENERATED);
+            then(aiDescriptionService).should().generateDescription(
+                    ownerId,
+                    "Americano",
+                    4500,
+                    "고소한 맛을 강조해줘"
+            );
+        }
+
+        @Test
+        @DisplayName("fails to create product when AI description generation fails")
+        void create_fail_whenAiDescriptionGenerationFails() {
+            // given
+            Long ownerId = 1L;
+            UUID storeId = UUID.randomUUID();
+            Store store = createStore(storeId, ownerId);
+            ProductCreateRequest request = new ProductCreateRequest(
+                    "Americano",
+                    4500,
+                    null,
+                    1,
+                    true,
+                    "고소한 맛을 강조해줘"
+            );
+
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(store));
+            given(productRepository.existsByStoreIdAndProductName(storeId, "Americano")).willReturn(false);
+            given(aiDescriptionService.generateDescription(
+                    ownerId,
+                    "Americano",
+                    4500,
+                    "고소한 맛을 강조해줘"
+            )).willThrow(new ExternalLlmCallFailedException());
+
+            // when & then
+            assertThatThrownBy(() -> productService.create(ownerId, UserRole.OWNER, storeId, request))
+                    .isInstanceOf(ExternalLlmCallFailedException.class);
             then(productRepository).should(never()).save(any(Product.class));
         }
     }

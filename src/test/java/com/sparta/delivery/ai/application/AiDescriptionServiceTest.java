@@ -1,12 +1,13 @@
 package com.sparta.delivery.ai.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
+import com.sparta.delivery.ai.infrastructure.external.llm.LlmInputSnapshot;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,7 @@ class AiDescriptionServiceTest {
                     "200"
             );
 
-            given(llmOrchestrator.generate(eq(actorId), anyString())).willReturn(response);
+            given(llmOrchestrator.generate(eq(actorId), any(LlmInputSnapshot.class))).willReturn(response);
 
             // when
             String generatedDescription = aiDescriptionService.generateDescription(
@@ -56,13 +57,16 @@ class AiDescriptionServiceTest {
             // then
             assertThat(generatedDescription).isEqualTo("generated text");
 
-            ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
-            then(llmOrchestrator).should().generate(eq(actorId), promptCaptor.capture());
+            ArgumentCaptor<LlmInputSnapshot> inputSnapshotCaptor = ArgumentCaptor.forClass(LlmInputSnapshot.class);
+            then(llmOrchestrator).should().generate(eq(actorId), inputSnapshotCaptor.capture());
 
-            String generatedPrompt = promptCaptor.getValue();
-            assertThat(generatedPrompt).contains(productName);
-            assertThat(generatedPrompt).contains(String.valueOf(price));
-            assertThat(generatedPrompt).contains(aiPromptText);
+            LlmInputSnapshot capturedSnapshot = inputSnapshotCaptor.getValue();
+            assertThat(capturedSnapshot.productName()).isEqualTo(productName);
+            assertThat(capturedSnapshot.price()).isEqualTo(price);
+            assertThat(capturedSnapshot.aiPromptText()).isEqualTo(aiPromptText);
+            assertThat(capturedSnapshot.prompt()).contains(productName);
+            assertThat(capturedSnapshot.prompt()).contains(String.valueOf(price));
+            assertThat(capturedSnapshot.prompt()).contains(aiPromptText);
         }
     }
 }

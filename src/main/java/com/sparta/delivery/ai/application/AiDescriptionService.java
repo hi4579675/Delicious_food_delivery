@@ -1,5 +1,6 @@
 package com.sparta.delivery.ai.application;
 
+import com.sparta.delivery.ai.infrastructure.external.llm.LlmInputSnapshot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +18,14 @@ public class AiDescriptionService {
     ) {
         String prompt = buildPrompt(productName, price, aiPromptText);
 
-        return llmOrchestrator.generate(actorId, prompt)
+        LlmInputSnapshot inputSnapshot = new LlmInputSnapshot(
+                prompt,
+                productName,
+                price,
+                aiPromptText
+        );
+
+        return llmOrchestrator.generate(actorId, inputSnapshot)
                 .generatedText();
     }
 
