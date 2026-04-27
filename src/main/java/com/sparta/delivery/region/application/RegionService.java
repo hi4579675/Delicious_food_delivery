@@ -1,5 +1,6 @@
 package com.sparta.delivery.region.application;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.region.domain.entity.Region;
 import com.sparta.delivery.region.domain.exception.DuplicateRegionCodeException;
 import com.sparta.delivery.region.domain.exception.InvalidParentRegionException;
@@ -11,9 +12,12 @@ import com.sparta.delivery.region.presentation.dto.RegionCreateRequest;
 import com.sparta.delivery.region.presentation.dto.RegionResponse;
 import com.sparta.delivery.region.presentation.dto.RegionUpdateRequest;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,15 +65,13 @@ public class RegionService {
     }
 
     /** keyword가 있으면 지역명으로 검색하고, 없으면 전체 지역 목록을 조회한다. */
-    public List<RegionResponse> searchRegions(String keyword) {
+    public PageResponse<RegionResponse> searchRegions(String keyword, Pageable pageable) {
         String normalizedKeyword = keyword == null ? null : keyword.trim();
-        List<Region> regions = (normalizedKeyword == null || normalizedKeyword.isBlank())
-                ? regionRepository.findAll()
-                : regionRepository.findByRegionNameContaining(normalizedKeyword);
+        Page<Region> page = (normalizedKeyword == null || normalizedKeyword.isBlank())
+                ? regionRepository.findAll(pageable)
+                : regionRepository.findByRegionNameContaining(normalizedKeyword, pageable);
 
-        return regions.stream()
-                .map(RegionResponse::from)
-                .toList();
+        return PageResponse.from(page.map(RegionResponse::from));
     }
 
     /** 최상위 지역 목록 조회 */
@@ -97,6 +99,7 @@ public class RegionService {
             throw new InvalidParentRegionException();
         }
 
+        validateRegionHierarchyChange(region, request.parentId(), request.depth());
         validateParentAndDepth(request.parentId(), request.depth());
 
         region.update(
@@ -142,13 +145,22 @@ public class RegionService {
 
     /** 지역 코드 중복 검사 */
     private void validateDuplicateRegionCode(String regionCode) {
-        if (regionRepository.existsByRegionCode(regionCode)) {
+        if (regionRepository.existsByRegionCodeIncludingDeleted(regionCode)) {
             throw new DuplicateRegionCodeException();
         }
     }
 
     private String normalize(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private void validateRegionHierarchyChange(Region region, UUID parentId, Integer depth) {
+        boolean hierarchyChanged = !Objects.equals(region.getParentId(), parentId)
+                || !region.getDepth().equals(depth);
+
+        if (hierarchyChanged && !regionRepository.findByParentId(region.getRegionId()).isEmpty()) {
+            throw new RegionHasChildrenException();
+        }
     }
 
     /** 부모 지역과 depth 규칙 검사 */

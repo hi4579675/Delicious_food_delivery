@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.delivery.auth.infrastructure.jwt.JwtAuthenticationEntryPoint;
 import com.sparta.delivery.auth.infrastructure.jwt.JwtProvider;
 import com.sparta.delivery.common.config.security.UserPrincipal;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.region.application.RegionService;
 import com.sparta.delivery.region.presentation.dto.RegionCreateRequest;
 import com.sparta.delivery.region.presentation.dto.RegionResponse;
@@ -33,6 +34,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @WebMvcTest(RegionController.class)
 class RegionControllerTest {
@@ -137,7 +140,8 @@ class RegionControllerTest {
                     true
             );
 
-            given(regionService.searchRegions("서울")).willReturn(List.of(response));
+            given(regionService.searchRegions("서울", PageRequest.of(0, 10, Sort.Direction.DESC, "createdAt")))
+                    .willReturn(new PageResponse<>(List.of(response), 0, 10, 1, 1, true));
 
             // when & then
             mockMvc.perform(get("/api/v1/regions")
@@ -145,10 +149,15 @@ class RegionControllerTest {
                             .with(authentication(managerAuthentication())))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data[0].regionCode").value("1100000000"))
-                    .andExpect(jsonPath("$.data[0].regionName").value("서울특별시"));
+                    .andExpect(jsonPath("$.data.content[0].regionCode").value("1100000000"))
+                    .andExpect(jsonPath("$.data.content[0].regionName").value("서울특별시"))
+                    .andExpect(jsonPath("$.data.page").value(0))
+                    .andExpect(jsonPath("$.data.size").value(10));
 
-            then(regionService).should().searchRegions("서울");
+            then(regionService).should().searchRegions(
+                    "서울",
+                    PageRequest.of(0, 10, Sort.Direction.DESC, "createdAt")
+            );
         }
 
         @Test
