@@ -2,9 +2,9 @@ package com.sparta.delivery.ai.infrastructure.external.llm.openai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sparta.delivery.ai.domain.entity.Llm;
 import com.sparta.delivery.ai.domain.entity.LlmProvider;
 import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
+import com.sparta.delivery.ai.domain.vo.ActiveLlmInfo;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmClient;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateRequest;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
@@ -29,18 +29,19 @@ public class OpenAiClient implements LlmClient {
     }
 
     @Override
-    public LlmGenerateResponse generate(Llm llm, LlmGenerateRequest request) {
+    public LlmGenerateResponse generate(ActiveLlmInfo llm, LlmGenerateRequest request) {
         try {
             ChatResponse chatResponse = chatClientBuilder.build()
                     .prompt()
                     .options(OpenAiChatOptions.builder()
-                            .model(llm.getLlmName())
-                            .maxTokens(40)
+                            .model(llm.llmName())
+                            .maxCompletionTokens(40)
                             .build())
                     .system("""
                         당신은 음식 배달 플랫폼의 상품 설명 작성 전문가입니다.
                         - 고객이 음식을 주문하고 싶어지도록 매력적으로 작성하세요.
                         - 3문장 이하로 간결하게 작성하세요. 총 길이는 한글 음절수 기준 50자를 넘을 수 없습니다.
+                        - 줄바꿈("\n") 없이 한 줄 안에 상품 설명을 완성하세요.
                         - 과장된 표현은 피하고 자연스러운 문체를 유지하세요.
                         """)
                     .user(request.prompt())
@@ -52,7 +53,7 @@ public class OpenAiClient implements LlmClient {
                 rawResponse = objectMapper.writeValueAsString(chatResponse);
             } catch (JsonProcessingException e) {
                 log.warn("[OpenAI Client] ChatResponse Serialization 실패: model={}, error={}",
-                        llm.getLlmName(), e.getMessage());
+                        llm.llmName(), e.getMessage());
                 rawResponse = null;
             }
 

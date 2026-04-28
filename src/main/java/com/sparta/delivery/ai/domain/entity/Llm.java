@@ -14,7 +14,12 @@ import org.hibernate.annotations.SQLRestriction;
 import java.util.UUID;
 
 @Entity
-@Table(name = "p_llms")
+@Table(
+        name = "p_llms",
+        indexes = {
+                @Index(name = "idx_llms_is_active", columnList = "is_active")
+        }
+)
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
