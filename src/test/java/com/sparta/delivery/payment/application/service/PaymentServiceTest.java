@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.order.domain.entity.Order;
 import com.sparta.delivery.order.domain.entity.OrderItem;
 import com.sparta.delivery.order.domain.repository.OrderRepository;
@@ -285,39 +286,74 @@ class PaymentServiceTest {
             given(paymentRepository.findAll(any(Pageable.class))).willReturn(page);
 
             // when
-            List<PaymentResponse> result = paymentService.getPayments(
+            PageResponse<PaymentResponse> result = paymentService.getPayments(
                     1L,
                     UserRole.MANAGER,
                     0,
                     10,
                     "createdAt",
-                    "desc"
+                    "desc",
+                    null
             );
 
             // then
-            assertThat(result).hasSize(2);
+            assertThat(result.content()).hasSize(2);
+            assertThat(result.page()).isEqualTo(0);
+            assertThat(result.size()).isEqualTo(2);
             then(paymentRepository).should().findAll(any(Pageable.class));
         }
 
         @Test
-        @DisplayName("CUSTOMER가 주문이 없으면 빈 리스트를 반환한다")
+        @DisplayName("MANAGER는 paymentStatus 조건으로 결제를 조회할 수 있다")
+        void getPayments_success_manager_withFilters() {
+            // given
+            Payment payment = createPayment(UUID.randomUUID(), UUID.randomUUID(), 10_000);
+            given(paymentRepository.findAllByPaymentStatus(
+                    eq(PaymentStatus.APPROVED),
+                    any(Pageable.class)
+            )).willReturn(new PageImpl<>(List.of(payment)));
+
+            // when
+            PageResponse<PaymentResponse> result = paymentService.getPayments(
+                    1L,
+                    UserRole.MANAGER,
+                    0,
+                    10,
+                    "createdAt",
+                    "desc",
+                    PaymentStatus.APPROVED
+            );
+
+            // then
+            assertThat(result.content()).hasSize(1);
+            then(paymentRepository).should().findAllByPaymentStatus(
+                    eq(PaymentStatus.APPROVED),
+                    any(Pageable.class)
+            );
+        }
+
+        @Test
+        @DisplayName("CUSTOMER가 주문이 없으면 빈 페이지를 반환한다")
         void getPayments_success_customer_noOrders() {
             // given
             Long actorId = 1L;
             given(orderRepository.findAllByUserIdOrderByCreatedAtDesc(actorId)).willReturn(List.of());
 
             // when
-            List<PaymentResponse> result = paymentService.getPayments(
+            PageResponse<PaymentResponse> result = paymentService.getPayments(
                     actorId,
                     UserRole.CUSTOMER,
                     0,
                     10,
                     "createdAt",
-                    "desc"
+                    "desc",
+                    null
             );
 
             // then
-            assertThat(result).isEmpty();
+            assertThat(result.content()).isEmpty();
+            assertThat(result.totalElements()).isZero();
+            assertThat(result.size()).isEqualTo(10);
             then(paymentRepository).shouldHaveNoInteractions();
         }
 
@@ -339,24 +375,34 @@ class PaymentServiceTest {
                     .willReturn(new PageImpl<>(List.of(p1, p2)));
 
             // when
-            List<PaymentResponse> result = paymentService.getPayments(
+            PageResponse<PaymentResponse> result = paymentService.getPayments(
                     actorId,
                     UserRole.CUSTOMER,
                     0,
                     10,
                     "createdAt",
-                    "desc"
+                    "desc",
+                    null
             );
 
             // then
-            assertThat(result).hasSize(2);
+            assertThat(result.content()).hasSize(2);
+            assertThat(result.totalElements()).isEqualTo(2);
             then(paymentRepository).should().findAllByOrderIdIn(eq(List.of(orderId1, orderId2)), any(Pageable.class));
         }
 
         @Test
         @DisplayName("허용되지 않는 역할이면 PaymentForbiddenException")
         void getPayments_fail_whenRoleNotAllowed() {
-            assertThatThrownBy(() -> paymentService.getPayments(1L, UserRole.OWNER, 0, 10, "createdAt", "desc"))
+            assertThatThrownBy(() -> paymentService.getPayments(
+                    1L,
+                    UserRole.OWNER,
+                    0,
+                    10,
+                    "createdAt",
+                    "desc",
+                    null
+            ))
                     .isInstanceOf(PaymentForbiddenException.class);
         }
     }

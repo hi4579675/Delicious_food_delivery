@@ -20,6 +20,7 @@ import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.delivery.auth.infrastructure.jwt.JwtProvider;
 import com.sparta.delivery.common.config.security.UserPrincipal;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.payment.application.service.PaymentService;
 import com.sparta.delivery.payment.domain.entity.PaymentFailureReason;
 import com.sparta.delivery.payment.domain.entity.PaymentMethod;
@@ -157,25 +158,27 @@ class PaymentControllerTest {
         void getPayments_success() throws Exception {
             // given
             PaymentResponse response = paymentResponse(UUID.randomUUID(), UUID.randomUUID(), 10_000);
-            given(paymentService.getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc"))
-                    .willReturn(List.of(response));
+            PageResponse<PaymentResponse> pageResponse = new PageResponse<>(List.of(response), 0, 10, 1, 1, true);
+            given(paymentService.getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc", null))
+                    .willReturn(pageResponse);
 
             // when & then
             mockMvc.perform(get("/api/v1/payments")
                             .with(authentication(authenticationToken(UserRole.MANAGER))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data[0].totalPrice").value(10_000));
+                    .andExpect(jsonPath("$.data.content[0].totalPrice").value(10_000));
 
-            then(paymentService).should().getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc");
+            then(paymentService).should().getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc", null);
         }
 
         @Test
         @DisplayName("size가 10/30/50이 아니면 10으로 보정한다")
         void getPayments_success_sizeNormalized() throws Exception {
             // given
-            given(paymentService.getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc"))
-                    .willReturn(List.of());
+            PageResponse<PaymentResponse> pageResponse = new PageResponse<>(List.of(), 0, 10, 0, 0, true);
+            given(paymentService.getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc", null))
+                    .willReturn(pageResponse);
 
             // when & then
             mockMvc.perform(get("/api/v1/payments")
@@ -184,7 +187,39 @@ class PaymentControllerTest {
                             .with(authentication(authenticationToken(UserRole.MANAGER))))
                     .andExpect(status().isOk());
 
-            then(paymentService).should().getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc");
+            then(paymentService).should().getPayments(1L, UserRole.MANAGER, 0, 10, "createdAt", "desc", null);
+        }
+
+        @Test
+        @DisplayName("검색조건 파라미터를 전달한다")
+        void getPayments_success_withSearchFilters() throws Exception {
+            // given
+            PageResponse<PaymentResponse> pageResponse = new PageResponse<>(List.of(), 0, 10, 0, 0, true);
+            given(paymentService.getPayments(
+                    1L,
+                    UserRole.MANAGER,
+                    0,
+                    10,
+                    "createdAt",
+                    "desc",
+                    PaymentStatus.APPROVED
+            )).willReturn(pageResponse);
+
+            // when & then
+            mockMvc.perform(get("/api/v1/payments")
+                            .param("paymentStatus", "APPROVED")
+                            .with(authentication(authenticationToken(UserRole.MANAGER))))
+                    .andExpect(status().isOk());
+
+            then(paymentService).should().getPayments(
+                    1L,
+                    UserRole.MANAGER,
+                    0,
+                    10,
+                    "createdAt",
+                    "desc",
+                    PaymentStatus.APPROVED
+            );
         }
     }
 
