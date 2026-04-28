@@ -2,10 +2,10 @@ package com.sparta.delivery.ai.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sparta.delivery.ai.domain.entity.Llm;
 import com.sparta.delivery.ai.domain.entity.LlmCall;
 import com.sparta.delivery.ai.domain.exception.LlmInputSnapshotSerializationException;
 import com.sparta.delivery.ai.domain.repository.LlmCallRepository;
+import com.sparta.delivery.ai.domain.vo.ActiveLlmInfo;
 import com.sparta.delivery.ai.infrastructure.external.llm.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,11 +26,11 @@ public class LlmOrchestrator {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public LlmGenerateResponse generate(Long actorId, LlmInputSnapshot inputSnapshot) {
-        Llm activeLlm = llmService.getActiveLlm();
+        ActiveLlmInfo activeLlm = llmService.getActiveLlm();
 
         String serializedInputSnapshot = createJsonInputSnapshot(inputSnapshot);
 
-        LlmClient client = llmClientRegistry.getClient(activeLlm.getProvider());
+        LlmClient client = llmClientRegistry.getClient(activeLlm.provider());
 
         LlmGenerateResponse response = client.generate(
                 activeLlm,
@@ -38,7 +38,7 @@ public class LlmOrchestrator {
         );
 
         LlmCall llmCall = LlmCall.create(
-                activeLlm.getLlmId(),
+                activeLlm.llmId(),
                 serializedInputSnapshot,
                 response.finishReason(),
                 response.rawResponse(),

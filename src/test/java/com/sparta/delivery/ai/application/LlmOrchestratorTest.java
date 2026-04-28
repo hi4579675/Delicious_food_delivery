@@ -17,6 +17,7 @@ import com.sparta.delivery.ai.domain.exception.ActiveLlmNotFoundException;
 import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
 import com.sparta.delivery.ai.domain.exception.LlmInputSnapshotSerializationException;
 import com.sparta.delivery.ai.domain.repository.LlmCallRepository;
+import com.sparta.delivery.ai.domain.vo.ActiveLlmInfo;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmClient;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmClientRegistry;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
@@ -69,7 +70,7 @@ class LlmOrchestratorTest {
             String prompt = "prompt";
             LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot(prompt, "Americano", 4500, "고소한 맛을 강조해줘");
             String inputSnapshot = "{\"prompt\":\"prompt\"}";
-            Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
+            ActiveLlmInfo activeLlm = new ActiveLlmInfo(llmId, "gpt-5.4-mini", LlmProvider.OPENAI);
             LlmGenerateResponse llmGenerateResponse = new LlmGenerateResponse(
                     "generated text",
                     "{\"result\":\"ok\"}",
@@ -92,7 +93,7 @@ class LlmOrchestratorTest {
             then(llmCallRepository).should().save(llmCallCaptor.capture());
 
             LlmCall savedCall = llmCallCaptor.getValue();
-            assertThat(savedCall.getLlmId()).isEqualTo(llmId);
+            assertThat(savedCall.getLlmId()).isEqualTo(activeLlm.llmId());
             assertThat(savedCall.getProductId()).isNull();
             assertThat(savedCall.getInputSnapshot()).isEqualTo(inputSnapshot);
             assertThat(savedCall.getFinishReason()).isEqualTo("200");
@@ -128,7 +129,7 @@ class LlmOrchestratorTest {
             String prompt = "prompt";
             LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot(prompt, "Americano", 4500, "고소한 맛을 강조해줘");
             String inputSnapshot = "{\"prompt\":\"prompt\"}";
-            Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
+            ActiveLlmInfo activeLlm = new ActiveLlmInfo(llmId, "gpt-5.4-mini", LlmProvider.OPENAI);
 
             given(llmService.getActiveLlm()).willReturn(activeLlm);
             given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
@@ -149,7 +150,7 @@ class LlmOrchestratorTest {
             UUID llmId = UUID.randomUUID();
             Long actorId = 1L;
             LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot("prompt", "Americano", 4500, null);
-            Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
+            ActiveLlmInfo activeLlm = new ActiveLlmInfo(llmId, "gpt-5.4-mini", LlmProvider.OPENAI);
 
             given(llmService.getActiveLlm()).willReturn(activeLlm);
             given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class)))
@@ -164,11 +165,5 @@ class LlmOrchestratorTest {
         }
     }
 
-    private Llm createLlm(UUID llmId, String llmName, LlmProvider provider, boolean isActive) {
-        Llm llm = Llm.create(llmName, provider, isActive);
-        ReflectionTestUtils.setField(llm, "llmId", llmId);
-        ReflectionTestUtils.setField(llm, "createdAt", LocalDateTime.now().minusDays(1));
-        ReflectionTestUtils.setField(llm, "updatedAt", LocalDateTime.now());
-        return llm;
-    }
 }
+
