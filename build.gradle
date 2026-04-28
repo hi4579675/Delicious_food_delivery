@@ -63,16 +63,12 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-def generated = 'src/main/generated'
+def generated = layout.buildDirectory.dir('generated/sources/annotationProcessor/java/main')
 
 sourceSets {
-    main.java.srcDirs += [generated]
+    main.java.srcDirs += generated
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.generatedSourceOutputDirectory = file(generated)
-}
-
-clean {
-    delete file(generated)
+    options.generatedSourceOutputDirectory = generated.get().asFile
 }
