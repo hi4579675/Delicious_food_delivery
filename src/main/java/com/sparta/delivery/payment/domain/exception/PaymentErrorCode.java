@@ -20,7 +20,8 @@ public enum PaymentErrorCode implements ErrorCode {
 
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PAYMENT-005", "결제 정보를 찾을 수 없습니다."),
     PAYMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "PAYMENT-006", "결제에 접근할 수 없습니다."),
-    DUPLICATE_PAYMENT_ORDER(HttpStatus.CONFLICT, "PAYMENT-007", "이미 해당 주문에 대한 결제가 존재합니다.");
+    DUPLICATE_PAYMENT_ORDER(HttpStatus.CONFLICT, "PAYMENT-007", "이미 해당 주문에 대한 결제가 존재합니다."),
+    ORDER_TOTAL_PRICE_MISMATCH(HttpStatus.CONFLICT, "PAYMENT-010", "주문 합계와 일치하지 않습니다.");
 
     private final HttpStatus status;
     private final String code;
