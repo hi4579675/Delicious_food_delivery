@@ -193,7 +193,7 @@ class LlmServiceTest {
             Llm target = createLlm(targetId, "gpt-4.1", LlmProvider.OPENAI, false);
 
             given(llmRepository.findByLlmId(targetId)).willReturn(Optional.of(target));
-            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(currentActive));
+            given(llmRepository.findByIsActiveTrueForUpdate()).willReturn(Optional.of(currentActive));
 
             var response = llmService.activate(1L, UserRole.MANAGER, targetId);
 

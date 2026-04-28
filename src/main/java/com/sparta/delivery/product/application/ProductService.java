@@ -70,12 +70,9 @@ public class ProductService {
         // hidden 이라면 권한 별 분기 처리
         Store store = getStoreOrThrow(product.getStoreId());
 
-        boolean canViewHidden =
-                actorRole == UserRole.MANAGER
-                || actorRole == UserRole.MASTER
-                || (actorRole == UserRole.OWNER && store.getUserId().equals(actorId));
+        boolean hiddenAccessibility = hiddenAccessibility(actorId, actorRole, store);
 
-        if (!canViewHidden) {
+        if (!hiddenAccessibility) {
             throw new ProductNotFoundException();
         }
 
@@ -93,10 +90,7 @@ public class ProductService {
     ) {
         Store store = getStoreOrThrow(storeId);
 
-        boolean canViewHidden =
-                actorRole == UserRole.MANAGER
-                || actorRole == UserRole.MASTER
-                || (actorRole == UserRole.OWNER && store.getUserId().equals(actorId));
+        boolean hiddenAccessibility = hiddenAccessibility(actorId, actorRole, store);
 
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
@@ -106,7 +100,7 @@ public class ProductService {
 
         String normalizedKeyword = normalizeKeyword(keyword);
 
-        Page<Product> products = getProductPage(storeId, normalizedKeyword, canViewHidden, pageable);
+        Page<Product> products = getProductPage(storeId, normalizedKeyword, hiddenAccessibility, pageable);
 
         return products.map(ProductResponse::from);
     }
@@ -205,6 +199,12 @@ public class ProductService {
         if (nameChanged && productRepository.existsByStoreIdAndProductName(product.getStoreId(), productName)) {
             throw new DuplicateProductNameException();
         }
+    }
+
+    private boolean hiddenAccessibility(Long actorId, UserRole actorRole, Store store) {
+        return actorRole == UserRole.MANAGER
+                || actorRole == UserRole.MASTER
+                || (actorRole == UserRole.OWNER && store.getUserId().equals(actorId));
     }
 
     private Product createProduct(
