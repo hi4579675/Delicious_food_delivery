@@ -61,6 +61,11 @@ public class RegionService {
     /** 지역 단건 조회 */
     public RegionResponse getRegion(UUID regionId) {
         Region region = getRegionOrThrow(regionId);
+
+        if (!region.getIsActive()) {
+            throw new RegionNotFoundException();
+        }
+
         return RegionResponse.from(region);
     }
 
@@ -68,22 +73,30 @@ public class RegionService {
     public PageResponse<RegionResponse> searchRegions(String keyword, Pageable pageable) {
         String normalizedKeyword = keyword == null ? null : keyword.trim();
         Page<Region> page = (normalizedKeyword == null || normalizedKeyword.isBlank())
-                ? regionRepository.findAll(pageable)
-                : regionRepository.findByRegionNameContaining(normalizedKeyword, pageable);
+                ? regionRepository.findByIsActiveTrue(pageable)
+                : regionRepository.findByRegionNameContainingAndIsActiveTrue(normalizedKeyword, pageable);
 
         return PageResponse.from(page.map(RegionResponse::from));
     }
 
+    /** 비활성 지역 목록 조회 */
+    public PageResponse<RegionResponse> getInactiveRegions(Pageable pageable) {
+        Page<RegionResponse> page = regionRepository.findByIsActiveFalse(pageable)
+                .map(RegionResponse::from);
+
+        return PageResponse.from(page);
+    }
+
     /** 최상위 지역 목록 조회 */
     public List<RegionResponse> getRootRegions() {
-        return regionRepository.findByParentIdIsNull().stream()
+        return regionRepository.findByParentIdIsNullAndIsActiveTrue().stream()
                 .map(RegionResponse::from)
                 .toList();
     }
 
     /** 특정 지역의 하위 지역 목록 조회 */
     public List<RegionResponse> getChildRegions(UUID parentId) {
-        return regionRepository.findByParentId(parentId).stream()
+        return regionRepository.findByParentIdAndIsActiveTrue(parentId).stream()
                 .map(RegionResponse::from)
                 .toList();
     }

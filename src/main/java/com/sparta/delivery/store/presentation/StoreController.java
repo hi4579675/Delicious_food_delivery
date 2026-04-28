@@ -87,9 +87,23 @@ public class StoreController {
                 createdBefore
         );
 
+        UserRole actorRole = principal != null
+                ? UserRole.valueOf(principal.getRole())
+                : null;
+
         return ResponseEntity.ok(ApiResponse.success(
-                storeService.searchStores(condition, pageable, UserRole.valueOf(principal.getRole()))
+                storeService.searchStores(condition, pageable, actorRole)
         ));
+    }
+
+    @Operation(summary = "비활성 가게 목록 조회")
+    @GetMapping("/inactive")
+    @PreAuthorize("hasAnyRole('MANAGER', 'MASTER')")
+    public ResponseEntity<ApiResponse<PageResponse<StoreResponse>>> getInactiveStores(
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(storeService.getInactiveStores(pageable)));
     }
 
     @Operation(summary = "가게 단건 조회")

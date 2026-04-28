@@ -161,6 +161,19 @@ class StoreCategoryServiceTest {
         }
 
         @Test
+        @DisplayName("비활성 카테고리는 공개 단건 조회에서 숨긴다")
+        void getCategory_fail_whenInactive() {
+            // given
+            UUID categoryId = UUID.randomUUID();
+            StoreCategory inactiveCategory = createCategory(categoryId, "치킨", 1, false);
+            given(storeCategoryRepository.findByCategoryId(categoryId)).willReturn(Optional.of(inactiveCategory));
+
+            // when & then
+            assertThatThrownBy(() -> storeCategoryService.getCategory(categoryId))
+                    .isInstanceOf(StoreCategoryNotFoundException.class);
+        }
+
+        @Test
         @DisplayName("전체 카테고리 목록을 조회한다")
         void getCategories_success() {
             // given

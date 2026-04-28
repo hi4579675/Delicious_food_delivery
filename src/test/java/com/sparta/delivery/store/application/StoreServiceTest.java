@@ -373,6 +373,22 @@ class StoreServiceTest {
             assertThatThrownBy(() -> storeService.getStore(storeId))
                     .isInstanceOf(StoreNotFoundException.class);
         }
+
+        @Test
+        @DisplayName("비활성 가게는 공개 단건 조회에서 숨긴다")
+        void getStore_fail_whenInactive() {
+            // given
+            UUID storeId = UUID.randomUUID();
+            Store inactiveStore = createStoreEntity(UUID.randomUUID(), UUID.randomUUID(), 1L);
+            ReflectionTestUtils.setField(inactiveStore, "storeId", storeId);
+            ReflectionTestUtils.setField(inactiveStore, "isActive", false);
+
+            given(storeRepository.findByStoreId(storeId)).willReturn(Optional.of(inactiveStore));
+
+            // when & then
+            assertThatThrownBy(() -> storeService.getStore(storeId))
+                    .isInstanceOf(StoreNotFoundException.class);
+        }
     }
 
     @Nested

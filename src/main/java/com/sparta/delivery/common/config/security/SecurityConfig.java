@@ -47,9 +47,24 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/signup")
                         .permitAll()
-                        // 상품 조회
+                        // 관리자 전용 조회 엔드포인트
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/regions/inactive",
+                                "/api/v1/store-categories/inactive",
+                                "/api/v1/store-categories/all",
+                                "/api/v1/stores/inactive"
+                        ).hasAnyRole("MANAGER", "MASTER")
+                        // 공개 조회 엔드포인트
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/products/*",
+                                "/api/v1/regions",
+                                "/api/v1/regions/root",
+                                "/api/v1/regions/*",
+                                "/api/v1/regions/*/children",
+                                "/api/v1/store-categories",
+                                "/api/v1/store-categories/*",
+                                "/api/v1/stores",
+                                "/api/v1/stores/*",
                                 "/api/v1/stores/*/products"
                         ).permitAll()
                         // --- 그 외 전부 인증 필요 ---
