@@ -16,17 +16,17 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.order.domain.entity.Order;
 import com.sparta.delivery.order.domain.entity.OrderStatus;
 import com.sparta.delivery.order.domain.repository.OrderRepository;
-import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.payment.domain.entity.Payment;
 import com.sparta.delivery.payment.domain.entity.PaymentStatus;
 import com.sparta.delivery.payment.domain.exception.DuplicatePaymentOrderException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderIdException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderStatusForPaymentException;
-import com.sparta.delivery.payment.domain.exception.InvalidTotalPriceException;
 import com.sparta.delivery.payment.domain.exception.InvalidPaymentStatusTransitionException;
+import com.sparta.delivery.payment.domain.exception.OrderTotalPriceMismatchException;
 import com.sparta.delivery.payment.domain.exception.PaymentForbiddenException;
 import com.sparta.delivery.payment.domain.exception.PaymentNotFoundException;
 import com.sparta.delivery.payment.domain.repository.PaymentRepository;
@@ -57,7 +57,7 @@ public class PaymentService {
         requireOrderStatusAllowedForPayment(order.getStatus());
 
         if (!order.getTotalPrice().equals(request.totalPrice())) {
-            throw new InvalidTotalPriceException();
+            throw new OrderTotalPriceMismatchException();
         }
 
         if (paymentRepository.existsAnyByOrderIdIncludingDeleted(order.getOrderId())) {
