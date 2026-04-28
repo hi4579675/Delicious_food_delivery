@@ -2,6 +2,7 @@ package com.sparta.delivery.product.presentation;
 
 import com.sparta.delivery.common.config.security.UserPrincipal;
 import com.sparta.delivery.common.response.ApiResponse;
+import com.sparta.delivery.common.response.PageResponse;
 import com.sparta.delivery.product.application.ProductService;
 import com.sparta.delivery.product.presentation.dto.request.ProductCreateRequest;
 import com.sparta.delivery.product.presentation.dto.request.ProductHiddenUpdateRequest;
@@ -66,7 +67,7 @@ public class ProductController {
 
     @Operation(summary = "상품 목록 조회")
     @GetMapping("/stores/{storeId}/products")
-    public ResponseEntity<ApiResponse<Page<ProductResponse>>> getProducts(
+    public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProducts(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID storeId,
             @RequestParam(defaultValue = "0") int page,
@@ -87,7 +88,7 @@ public class ProductController {
                 keyword
         );
 
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.from(response)));
     }
 
 
@@ -115,7 +116,7 @@ public class ProductController {
     public ResponseEntity<ApiResponse<ProductResponse>> changeHidden(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID productId,
-            @RequestBody ProductHiddenUpdateRequest request
+            @RequestBody @Valid ProductHiddenUpdateRequest request
             ) {
         ProductResponse response = productService.changeHidden(
                 principal.getId(),
@@ -133,7 +134,7 @@ public class ProductController {
     public ResponseEntity<ApiResponse<ProductResponse>> changeSoldOut(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID productId,
-            @RequestBody ProductSoldOutUpdateRequest request
+            @RequestBody @Valid ProductSoldOutUpdateRequest request
             ) {
         ProductResponse response = productService.changeSoldOut(
                 principal.getId(),

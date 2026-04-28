@@ -1,6 +1,9 @@
 package com.sparta.delivery.product.presentation.dto.request;
 
+import jakarta.validation.constraints.NotNull;
+
 public record ProductSoldOutUpdateRequest (
-        boolean soldOut
+        @NotNull
+        Boolean soldOut
 ) {
 }
