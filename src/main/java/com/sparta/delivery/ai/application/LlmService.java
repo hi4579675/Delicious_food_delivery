@@ -163,7 +163,7 @@ public class LlmService {
     }
 
     private void deactivateCurrentActiveLlm() {
-        llmRepository.findByIsActiveTrue()
+        llmRepository.findByIsActiveTrueForUpdate()
                 .ifPresent(Llm::deactivate);
     }
 }
