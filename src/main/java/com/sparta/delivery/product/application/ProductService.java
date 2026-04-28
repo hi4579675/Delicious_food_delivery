@@ -1,6 +1,7 @@
 package com.sparta.delivery.product.application;
 
 import com.sparta.delivery.ai.application.AiDescriptionService;
+import com.sparta.delivery.store.domain.exception.StoreNotFoundException;
 import com.sparta.delivery.product.domain.entity.DescriptionSource;
 import com.sparta.delivery.product.domain.entity.Product;
 import com.sparta.delivery.product.domain.exception.DuplicateProductNameException;
@@ -105,7 +106,7 @@ public class ProductService {
 
         String normalizedKeyword = normalizeKeyword(keyword);
 
-        Page<Product> products =  getProductPage(storeId, normalizedKeyword, canViewHidden, pageable);
+        Page<Product> products = getProductPage(storeId, normalizedKeyword, canViewHidden, pageable);
 
         return products.map(ProductResponse::from);
     }
@@ -172,9 +173,8 @@ public class ProductService {
 
 
     private Store getStoreOrThrow(UUID storeId) {
-        // TODO: Store 도메인 예외 구현 즉시 해당 예외로 변경
         return storeRepository.findByStoreId(storeId)
-                .orElseThrow(IllegalArgumentException::new);
+                .orElseThrow(StoreNotFoundException::new);
     }
     private Product getProductOrThrow(UUID productId) {
         // 존재하는 상품인지 확인

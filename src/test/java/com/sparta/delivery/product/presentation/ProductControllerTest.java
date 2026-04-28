@@ -345,6 +345,52 @@ class ProductControllerTest {
         }
 
         @Test
+        @DisplayName("returns 400 when hidden field is missing")
+        void changeHidden_fail_whenHiddenFieldMissing() throws Exception {
+            // given
+            UUID productId = UUID.randomUUID();
+            UsernamePasswordAuthenticationToken auth = authenticationToken(UserRole.OWNER);
+
+            // when & then
+            TestSecurityContextHolder.setAuthentication(auth);
+            try {
+                mockMvc.perform(patch("/api/v1/products/{productId}/hidden", productId)
+                                .with(csrf())
+                                .with(authentication(auth))
+                                .contentType("application/json")
+                                .content("{}"))
+                        .andExpect(status().isBadRequest());
+            } finally {
+                TestSecurityContextHolder.clearContext();
+            }
+
+            then(productService).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("returns 400 when soldOut field is missing")
+        void changeSoldOut_fail_whenSoldOutFieldMissing() throws Exception {
+            // given
+            UUID productId = UUID.randomUUID();
+            UsernamePasswordAuthenticationToken auth = authenticationToken(UserRole.OWNER);
+
+            // when & then
+            TestSecurityContextHolder.setAuthentication(auth);
+            try {
+                mockMvc.perform(patch("/api/v1/products/{productId}/sold-out", productId)
+                                .with(csrf())
+                                .with(authentication(auth))
+                                .contentType("application/json")
+                                .content("{}"))
+                        .andExpect(status().isBadRequest());
+            } finally {
+                TestSecurityContextHolder.clearContext();
+            }
+
+            then(productService).shouldHaveNoInteractions();
+        }
+
+        @Test
         @DisplayName("deletes a product for OWNER role")
         void deleteProduct_success() throws Exception {
             // given

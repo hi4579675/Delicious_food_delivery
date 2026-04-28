@@ -9,12 +9,14 @@ import com.sparta.delivery.ai.infrastructure.external.llm.LlmClient;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateRequest;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class OpenAiClient implements LlmClient {
 
@@ -33,6 +35,7 @@ public class OpenAiClient implements LlmClient {
                     .prompt()
                     .options(OpenAiChatOptions.builder()
                             .model(llm.getLlmName())
+                            .maxTokens(40)
                             .build())
                     .system("""
                         당신은 음식 배달 플랫폼의 상품 설명 작성 전문가입니다.
@@ -48,6 +51,8 @@ public class OpenAiClient implements LlmClient {
             try {
                 rawResponse = objectMapper.writeValueAsString(chatResponse);
             } catch (JsonProcessingException e) {
+                log.warn("[OpenAI Client] ChatResponse Serialization 실패: model={}, error={}",
+                        llm.getLlmName(), e.getMessage());
                 rawResponse = null;
             }
 

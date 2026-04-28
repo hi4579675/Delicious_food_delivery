@@ -1,5 +1,6 @@
 package com.sparta.delivery.ai.application;
 
+import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmInputSnapshot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,9 +26,17 @@ public class AiDescriptionService {
                 aiPromptText
         );
 
-        return llmOrchestrator.generate(actorId, inputSnapshot)
-                .generatedText();
+        String generatedText = llmOrchestrator.generate(actorId, inputSnapshot).generatedText();
+
+        if (generatedText == null || generatedText.isBlank()) {
+            throw new ExternalLlmCallFailedException();
+        }
+
+        return generatedText.length() > 50
+                ? generatedText.substring(0, 50)
+                : generatedText;
     }
+
 
     private String buildPrompt(String productName, Integer price, String aiPromptText) {
         StringBuilder promptBuilder = new StringBuilder();

@@ -1,10 +1,13 @@
 package com.sparta.delivery.ai.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+
+import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
 
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmInputSnapshot;
@@ -29,6 +32,64 @@ class AiDescriptionServiceTest {
     @Nested
     @DisplayName("AI description")
     class GenerateDescription {
+
+        @Test
+        @DisplayName("throws ExternalLlmCallFailedException when generated text is null")
+        void generateDescription_fail_whenGeneratedTextIsNull() {
+            // given
+            Long actorId = 1L;
+            LlmGenerateResponse response = new LlmGenerateResponse(
+                    null,
+                    null,
+                    "STOP"
+            );
+            given(llmOrchestrator.generate(eq(actorId), any(LlmInputSnapshot.class))).willReturn(response);
+
+            // when & then
+            assertThatThrownBy(() -> aiDescriptionService.generateDescription(
+                    actorId, "Americano", 4500, null
+            )).isInstanceOf(ExternalLlmCallFailedException.class);
+        }
+
+        @Test
+        @DisplayName("throws ExternalLlmCallFailedException when generated text is blank")
+        void generateDescription_fail_whenGeneratedTextIsBlank() {
+            // given
+            Long actorId = 1L;
+            LlmGenerateResponse response = new LlmGenerateResponse(
+                    "   ",
+                    null,
+                    "STOP"
+            );
+            given(llmOrchestrator.generate(eq(actorId), any(LlmInputSnapshot.class))).willReturn(response);
+
+            // when & then
+            assertThatThrownBy(() -> aiDescriptionService.generateDescription(
+                    actorId, "Americano", 4500, null
+            )).isInstanceOf(ExternalLlmCallFailedException.class);
+        }
+
+        @Test
+        @DisplayName("trims generated text to 50 characters when it exceeds limit")
+        void generateDescription_success_trimmedTo50() {
+            // given
+            Long actorId = 1L;
+            String longText = "가".repeat(60); // 60자
+            LlmGenerateResponse response = new LlmGenerateResponse(
+                    longText,
+                    null,
+                    "STOP"
+            );
+            given(llmOrchestrator.generate(eq(actorId), any(LlmInputSnapshot.class))).willReturn(response);
+
+            // when
+            String result = aiDescriptionService.generateDescription(
+                    actorId, "Americano", 4500, null
+            );
+
+            // then
+            assertThat(result).hasSize(50);
+        }
 
         @Test
         @DisplayName("returns generated text from llm orchestrator")
