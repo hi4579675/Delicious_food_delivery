@@ -1,6 +1,7 @@
 package com.sparta.delivery.product.application;
 
 import com.sparta.delivery.ai.application.AiDescriptionService;
+import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
 import com.sparta.delivery.store.domain.exception.StoreNotFoundException;
 import com.sparta.delivery.product.domain.entity.DescriptionSource;
 import com.sparta.delivery.product.domain.entity.Product;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @Slf4j
@@ -276,12 +278,19 @@ public class ProductService {
 
     private String resolveDescription(Long actorId, ProductCreateRequest request) {
         if (request.shouldGenerateDescription()) {
-            return aiDescriptionService.generateDescription(
-                    actorId,
-                    request.productName(),
-                    request.price(),
-                    request.aiPromptText()
-            );
+            try {
+                return aiDescriptionService.generateDescription(
+                        actorId,
+                        request.productName(),
+                        request.price(),
+                        request.aiPromptText()
+                ).get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new ExternalLlmCallFailedException();
+            } catch (ExecutionException e) {
+                throw new ExternalLlmCallFailedException();
+            }
         }
         return request.description();
     }
