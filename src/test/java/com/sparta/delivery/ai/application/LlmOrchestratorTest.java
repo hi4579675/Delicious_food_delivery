@@ -17,13 +17,11 @@ import com.sparta.delivery.ai.domain.exception.ActiveLlmNotFoundException;
 import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
 import com.sparta.delivery.ai.domain.exception.LlmInputSnapshotSerializationException;
 import com.sparta.delivery.ai.domain.repository.LlmCallRepository;
-import com.sparta.delivery.ai.domain.repository.LlmRepository;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmClient;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmClientRegistry;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmInputSnapshot;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,8 +36,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class LlmOrchestratorTest {
 
+    // LlmOrchestrator는 LlmService.getActiveLlm()을 통해 활성 LLM을 조회한다.
+    // LlmRepository를 직접 mock하지 않는다.
     @Mock
-    private LlmRepository llmRepository;
+    private LlmService llmService;
 
     @Mock
     private LlmCallRepository llmCallRepository;
@@ -76,7 +76,7 @@ class LlmOrchestratorTest {
                     "200"
             );
 
-            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
+            given(llmService.getActiveLlm()).willReturn(activeLlm);
             given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
             given(llmClientRegistry.getClient(LlmProvider.OPENAI)).willReturn(llmClient);
             given(llmClient.generate(eq(activeLlm), any())).willReturn(llmGenerateResponse);
@@ -109,9 +109,9 @@ class LlmOrchestratorTest {
             Long actorId = 1L;
             LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot("prompt", "Americano", 4500, null);
 
-            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.empty());
+            given(llmService.getActiveLlm()).willThrow(new ActiveLlmNotFoundException());
 
-            // when // then
+            // when & then
             assertThatThrownBy(() -> llmOrchestrator.generate(actorId, llmInputSnapshot))
                     .isInstanceOf(ActiveLlmNotFoundException.class);
 
@@ -130,12 +130,12 @@ class LlmOrchestratorTest {
             String inputSnapshot = "{\"prompt\":\"prompt\"}";
             Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
 
-            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
+            given(llmService.getActiveLlm()).willReturn(activeLlm);
             given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
             given(llmClientRegistry.getClient(LlmProvider.OPENAI)).willReturn(llmClient);
             given(llmClient.generate(eq(activeLlm), any())).willThrow(new ExternalLlmCallFailedException());
 
-            // when // then
+            // when & then
             assertThatThrownBy(() -> llmOrchestrator.generate(actorId, llmInputSnapshot))
                     .isInstanceOf(ExternalLlmCallFailedException.class);
 
@@ -151,11 +151,11 @@ class LlmOrchestratorTest {
             LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot("prompt", "Americano", 4500, null);
             Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
 
-            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
+            given(llmService.getActiveLlm()).willReturn(activeLlm);
             given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class)))
                     .willThrow(new JsonProcessingException("serialize fail") { });
 
-            // when // then
+            // when & then
             assertThatThrownBy(() -> llmOrchestrator.generate(actorId, llmInputSnapshot))
                     .isInstanceOf(LlmInputSnapshotSerializationException.class);
 
