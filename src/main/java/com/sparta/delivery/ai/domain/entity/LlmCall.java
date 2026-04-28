@@ -2,8 +2,9 @@ package com.sparta.delivery.ai.domain.entity;
 
 import com.sparta.delivery.ai.domain.exception.InvalidCreatedByException;
 import com.sparta.delivery.ai.domain.exception.InvalidInputSnapshotException;
-import com.sparta.delivery.ai.domain.exception.InvalidProviderStatusCodeException;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,14 +27,15 @@ public class LlmCall {
     @Column(name = "llm_id", nullable = false)
     private UUID llmId;
 
-    @Column(name = "product_id", nullable = false)
+    @Column(name = "product_id")
     private UUID productId;
 
     @Column(name = "input_snapshot", nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String inputSnapshot;
 
-    @Column(name = "provider_status_code", length = 50)
-    private String providerStatusCode;
+    @Column(name = "finish_reason", length = 50)
+    private String finishReason;
 
     @Column(name = "raw_response", columnDefinition = "TEXT")
     private String rawResponse;
@@ -50,18 +52,16 @@ public class LlmCall {
     @Builder(access = AccessLevel.PRIVATE)
     private LlmCall(
             UUID llmId,
-            UUID productId,
             String inputSnapshot,
-            String providerStatusCode,
+            String finishReason,
             String rawResponse,
             String generatedText,
             LocalDateTime createdAt,
             Long createdBy
     ) {
         this.llmId = llmId;
-        this.productId = productId;
         this.inputSnapshot = inputSnapshot;
-        this.providerStatusCode = providerStatusCode;
+        this.finishReason = finishReason;
         this.rawResponse = rawResponse;
         this.generatedText = generatedText;
         this.createdAt = createdAt;
@@ -70,22 +70,19 @@ public class LlmCall {
 
     public static LlmCall create(
             UUID llmId,
-            UUID productId,
             String inputSnapshot,
-            String providerStatusCode,
+            String finishReason,
             String rawResponse,
             String generatedText,
             Long createdBy
     ) {
         validateInputSnapshot(inputSnapshot);
-        validateProviderStatusCode(providerStatusCode);
         validateCreatedBy(createdBy);
 
         return LlmCall.builder()
                 .llmId(llmId)
-                .productId(productId)
                 .inputSnapshot(inputSnapshot)
-                .providerStatusCode(providerStatusCode)
+                .finishReason(finishReason)
                 .rawResponse(rawResponse)
                 .generatedText(generatedText)
                 .createdAt(LocalDateTime.now())
@@ -96,12 +93,6 @@ public class LlmCall {
     private static void validateInputSnapshot(String inputSnapshot) {
         if (inputSnapshot == null || inputSnapshot.isBlank()) {
             throw new InvalidInputSnapshotException();
-        }
-    }
-
-    private static void validateProviderStatusCode(String providerStatusCode) {
-        if (providerStatusCode != null && providerStatusCode.length() > 50) {
-            throw new InvalidProviderStatusCodeException();
         }
     }
 

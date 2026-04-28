@@ -9,7 +9,7 @@ public record LlmCallListResponse(
         UUID callId,
         UUID productId,
         UUID llmId,
-        String providerStatusCode,
+        String finishReason,
         LocalDateTime createdAt
 ) {
     public static LlmCallListResponse from(LlmCall llmCall) {
@@ -17,7 +17,7 @@ public record LlmCallListResponse(
                 llmCall.getCallId(),
                 llmCall.getProductId(),
                 llmCall.getLlmId(),
-                llmCall.getProviderStatusCode(),
+                llmCall.getFinishReason(),
                 llmCall.getCreatedAt()
         );
     }

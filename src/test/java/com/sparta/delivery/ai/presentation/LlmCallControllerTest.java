@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -59,7 +60,7 @@ class LlmCallControllerTest {
                     UUID.randomUUID(),
                     UUID.randomUUID(),
                     "{\"productName\":\"Americano\"}",
-                    "200",
+                    "STOP",
                     "{\"result\":\"ok\"}",
                     "generated description",
                     LocalDateTime.now(),
@@ -73,7 +74,7 @@ class LlmCallControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.data.callId").value(callId.toString()))
-                    .andExpect(jsonPath("$.data.providerStatusCode").value("200"));
+                    .andExpect(jsonPath("$.data.finishReason").value("STOP"));
 
             then(llmCallService).should().getLlmCall(UserRole.MANAGER, callId);
         }
@@ -81,23 +82,24 @@ class LlmCallControllerTest {
         @Test
         @DisplayName("MANAGER 권한이면 호출 로그 목록을 조회한다")
         void getLlmCalls_success() throws Exception {
-            LlmCallListResponse response = new LlmCallListResponse(
+            LlmCallListResponse item = new LlmCallListResponse(
                     UUID.randomUUID(),
                     UUID.randomUUID(),
                     UUID.randomUUID(),
-                    "200",
+                    "STOP",
                     LocalDateTime.now()
             );
 
-            given(llmCallService.getLlmCalls(UserRole.MANAGER)).willReturn(List.of(response));
+            given(llmCallService.getLlmCalls(UserRole.MANAGER, 0, 10, null))
+                    .willReturn(new PageImpl<>(List.of(item)));
 
             mockMvc.perform(get("/api/v1/llm-calls")
                             .with(authentication(authenticationToken(UserRole.MANAGER))))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.data[0].providerStatusCode").value("200"));
+                    .andExpect(jsonPath("$.data.content[0].finishReason").value("STOP"));
 
-            then(llmCallService).should().getLlmCalls(UserRole.MANAGER);
+            then(llmCallService).should().getLlmCalls(UserRole.MANAGER, 0, 10, null);
         }
     }
 

@@ -1,20 +1,21 @@
 package com.sparta.delivery.ai.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
-import java.util.UUID;
-
+import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
+import com.sparta.delivery.ai.infrastructure.external.llm.LlmInputSnapshot;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
 
 @ExtendWith(MockitoExtension.class)
 class AiDescriptionServiceTest {
@@ -33,23 +34,39 @@ class AiDescriptionServiceTest {
         @DisplayName("returns generated text from llm orchestrator")
         void generateDescription_success() {
             // given
-            UUID productId = UUID.randomUUID();
             Long actorId = 1L;
-            String prompt = "아메리카노 설명 생성";
+            String productName = "Americano";
+            Integer price = 4500;
+            String aiPromptText = "고소한 맛을 강조해줘";
             LlmGenerateResponse response = new LlmGenerateResponse(
-                    "깔끔하고 산뜻한 아메리카노 설명",
+                    "generated text",
                     "{\"result\":\"ok\"}",
-                    "200"
+                    "STOP"
             );
 
-            given(llmOrchestrator.generate(productId, actorId, prompt)).willReturn(response);
+            given(llmOrchestrator.generate(eq(actorId), any(LlmInputSnapshot.class))).willReturn(response);
 
             // when
-            String generatedDescription = aiDescriptionService.generateDescription(productId, actorId, prompt);
+            String generatedDescription = aiDescriptionService.generateDescription(
+                    actorId,
+                    productName,
+                    price,
+                    aiPromptText
+            );
 
             // then
-            assertThat(generatedDescription).isEqualTo("깔끔하고 산뜻한 아메리카노 설명");
-            then(llmOrchestrator).should().generate(productId, actorId, prompt);
+            assertThat(generatedDescription).isEqualTo("generated text");
+
+            ArgumentCaptor<LlmInputSnapshot> inputSnapshotCaptor = ArgumentCaptor.forClass(LlmInputSnapshot.class);
+            then(llmOrchestrator).should().generate(eq(actorId), inputSnapshotCaptor.capture());
+
+            LlmInputSnapshot capturedSnapshot = inputSnapshotCaptor.getValue();
+            assertThat(capturedSnapshot.productName()).isEqualTo(productName);
+            assertThat(capturedSnapshot.price()).isEqualTo(price);
+            assertThat(capturedSnapshot.aiPromptText()).isEqualTo(aiPromptText);
+            assertThat(capturedSnapshot.prompt()).contains(productName);
+            assertThat(capturedSnapshot.prompt()).contains(String.valueOf(price));
+            assertThat(capturedSnapshot.prompt()).contains(aiPromptText);
         }
     }
 }

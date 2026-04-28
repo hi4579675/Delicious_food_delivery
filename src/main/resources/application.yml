@@ -17,6 +17,9 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY:dummy-key}
       base-url: https://api.openai.com
+      chat:
+        options:
+          temperature: 1.0
 
     gemini:
       api-key: ${GEMINI_API_KEY:dummy-key}

@@ -12,11 +12,13 @@ import com.sparta.delivery.ai.presentation.dto.response.LlmResponse;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -51,14 +53,44 @@ public class LlmService {
         return LlmResponse.from(llm);
     }
 
-    public List<LlmResponse> getLlms(UserRole actorRole) {
+    public Page<LlmResponse> getLlms(UserRole actorRole, int page, int size, String sort, String keyword) {
         validateLlmPermission(actorRole);
-        return llmRepository.findAll(Sort.by(
-                Sort.Order.desc("isActive"),
-                Sort.Order.desc("updatedAt")
-        )).stream()
-                .map(LlmResponse::from)
-                .toList();
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                normalizePageSize(size),
+                normalizeSort(sort)
+        );
+        String normalizedKeyword = normalizeKeyword(keyword);
+        if (normalizedKeyword != null) {
+            return llmRepository.findByLlmNameContainingIgnoreCase(normalizedKeyword, pageable)
+                    .map(LlmResponse::from);
+        }
+        return llmRepository.findAll(pageable)
+                .map(LlmResponse::from);
+    }
+
+    private int normalizePageSize(int size) {
+        return (size == 10 || size == 30 || size == 50) ? size : 10;
+    }
+
+    private Sort normalizeSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return Sort.by(Sort.Order.desc("isActive"), Sort.Order.desc("updatedAt"));
+        }
+        String[] parts = sort.split(",");
+        String property = parts[0].trim();
+        String direction = parts.length > 1 ? parts[1].trim().toLowerCase() : "desc";
+
+        if (!property.equals("isActive") && !property.equals("updatedAt") && !property.equals("llmName")) {
+            return Sort.by(Sort.Order.desc("isActive"), Sort.Order.desc("updatedAt"));
+        }
+        Sort.Direction sortDirection = direction.equals("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return Sort.by(sortDirection, property);
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) return null;
+        return keyword.trim();
     }
 
     @Transactional

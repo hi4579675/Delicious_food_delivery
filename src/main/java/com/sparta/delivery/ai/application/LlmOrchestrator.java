@@ -12,6 +12,7 @@ import com.sparta.delivery.ai.infrastructure.external.llm.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
@@ -27,26 +28,24 @@ public class LlmOrchestrator {
     private final LlmClientRegistry llmClientRegistry;
     private final ObjectMapper objectMapper;
 
-    @Transactional
-    public LlmGenerateResponse generate(UUID productId, Long actorId, String prompt) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public LlmGenerateResponse generate(Long actorId, LlmInputSnapshot inputSnapshot) {
         Llm activeLlm = llmRepository.findByIsActiveTrue()
                 .orElseThrow(ActiveLlmNotFoundException::new);
+
+        String serializedInputSnapshot = createJsonInputSnapshot(inputSnapshot);
 
         LlmClient client = llmClientRegistry.getClient(activeLlm.getProvider());
 
         LlmGenerateResponse response = client.generate(
                 activeLlm,
-                new LlmGenerateRequest(prompt)
+                new LlmGenerateRequest(inputSnapshot.prompt())
         );
-
-        String inputSnapshot = createJsonInputSnapshot(prompt);
 
         LlmCall llmCall = LlmCall.create(
                 activeLlm.getLlmId(),
-                productId,
-                // TODO: Product 연계 시 inputSnapshot을 구조화된 요청 값으로 확장
-                inputSnapshot,
-                response.providerStatusCode(),
+                serializedInputSnapshot,
+                response.finishReason(),
                 response.rawResponse(),
                 response.generatedText(),
                 actorId
@@ -57,9 +56,9 @@ public class LlmOrchestrator {
         return response;
     }
 
-    private String createJsonInputSnapshot(String prompt) {
+    private String createJsonInputSnapshot(LlmInputSnapshot inputSnapshot) {
         try {
-            return objectMapper.writeValueAsString(new LlmInputSnapshot(prompt));
+            return objectMapper.writeValueAsString(inputSnapshot);
         } catch (JsonProcessingException e) {
             log.error("LLM inputSnapshot 직렬화 실패 - productId용 snapshot 생성 중", e);
             throw new LlmInputSnapshotSerializationException();

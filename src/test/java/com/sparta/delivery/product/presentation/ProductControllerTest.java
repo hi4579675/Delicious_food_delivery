@@ -73,7 +73,7 @@ class ProductControllerTest {
         void createProduct_success() throws Exception {
             // given
             UUID storeId = UUID.randomUUID();
-            ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, "coffee", 1);
+            ProductCreateRequest request = new ProductCreateRequest("Americano", 4500, "coffee", 1, false, null);
             ProductResponse response = productResponse(UUID.randomUUID(), storeId, "Americano", false, false);
             UsernamePasswordAuthenticationToken auth = authenticationToken(UserRole.OWNER);
 
@@ -100,11 +100,64 @@ class ProductControllerTest {
         }
 
         @Test
+        @DisplayName("creates a product with AI generated description for OWNER role")
+        void createProduct_success_aiGeneratedDescription() throws Exception {
+            // given
+            UUID storeId = UUID.randomUUID();
+            UUID productId = UUID.randomUUID();
+            ProductCreateRequest request = new ProductCreateRequest(
+                    "Americano",
+                    4500,
+                    null,
+                    1,
+                    true,
+                    "고소한 맛을 강조해줘"
+            );
+            ProductResponse response = new ProductResponse(
+                    productId,
+                    storeId,
+                    "Americano",
+                    "AI generated description",
+                    DescriptionSource.AI_GENERATED,
+                    4500,
+                    false,
+                    false,
+                    1,
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
+            UsernamePasswordAuthenticationToken auth = authenticationToken(UserRole.OWNER);
+
+            given(productService.create(eq(1L), eq(UserRole.OWNER), eq(storeId), any(ProductCreateRequest.class)))
+                    .willReturn(response);
+
+            // when & then
+            TestSecurityContextHolder.setAuthentication(auth);
+            try {
+                mockMvc.perform(post("/api/v1/stores/{storeId}/products", storeId)
+                                .with(csrf())
+                                .with(authentication(auth))
+                                .contentType("application/json")
+                                .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.success").value(true))
+                        .andExpect(jsonPath("$.status").value(201))
+                        .andExpect(jsonPath("$.data.productName").value("Americano"))
+                        .andExpect(jsonPath("$.data.description").value("AI generated description"))
+                        .andExpect(jsonPath("$.data.descriptionSource").value("AI_GENERATED"));
+            } finally {
+                TestSecurityContextHolder.clearContext();
+            }
+
+            then(productService).should().create(eq(1L), eq(UserRole.OWNER), eq(storeId), any(ProductCreateRequest.class));
+        }
+
+        @Test
         @DisplayName("returns 400 when product name is blank")
         void createProduct_fail_whenProductNameBlank() throws Exception {
             // given
             UUID storeId = UUID.randomUUID();
-            ProductCreateRequest request = new ProductCreateRequest("", 4500, null, 1);
+            ProductCreateRequest request = new ProductCreateRequest("", 4500, null, 1, false, null);
             UsernamePasswordAuthenticationToken auth = authenticationToken(UserRole.OWNER);
 
             // when & then
