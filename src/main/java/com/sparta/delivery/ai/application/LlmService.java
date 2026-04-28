@@ -1,10 +1,7 @@
 package com.sparta.delivery.ai.application;
 
 import com.sparta.delivery.ai.domain.entity.Llm;
-import com.sparta.delivery.ai.domain.exception.CannotDeleteActiveLlmException;
-import com.sparta.delivery.ai.domain.exception.DuplicateLlmNameException;
-import com.sparta.delivery.ai.domain.exception.AiForbiddenException;
-import com.sparta.delivery.ai.domain.exception.LlmNotFoundException;
+import com.sparta.delivery.ai.domain.exception.*;
 import com.sparta.delivery.ai.domain.repository.LlmRepository;
 import com.sparta.delivery.ai.presentation.dto.request.LlmCreateRequest;
 import com.sparta.delivery.ai.presentation.dto.request.LlmUpdateRequest;
@@ -12,6 +9,8 @@ import com.sparta.delivery.ai.presentation.dto.response.LlmResponse;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -106,6 +105,7 @@ public class LlmService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "activeLlm", key = "'current'")
     public LlmResponse activate(Long actorId, UserRole actorRole, UUID llmId) {
         validateLlmPermission(actorRole);
         Llm target = getLlmOrThrow(llmId);
@@ -165,5 +165,11 @@ public class LlmService {
     private void deactivateCurrentActiveLlm() {
         llmRepository.findByIsActiveTrueForUpdate()
                 .ifPresent(Llm::deactivate);
+    }
+
+    @Cacheable(cacheNames = "activeLlm", key = "'current'")
+    public Llm getActiveLlm() {
+        return llmRepository.findByIsActiveTrue()
+                .orElseThrow(ActiveLlmNotFoundException::new);
     }
 }
