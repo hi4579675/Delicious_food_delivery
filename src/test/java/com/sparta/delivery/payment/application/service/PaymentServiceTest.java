@@ -22,7 +22,7 @@ import com.sparta.delivery.payment.domain.entity.PaymentMethod;
 import com.sparta.delivery.payment.domain.exception.DuplicatePaymentOrderException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderIdException;
 import com.sparta.delivery.payment.domain.exception.InvalidOrderStatusForPaymentException;
-import com.sparta.delivery.payment.domain.exception.InvalidTotalPriceException;
+import com.sparta.delivery.payment.domain.exception.OrderTotalPriceMismatchException;
 import com.sparta.delivery.payment.domain.exception.PaymentForbiddenException;
 import com.sparta.delivery.payment.domain.exception.PaymentNotFoundException;
 import com.sparta.delivery.payment.domain.repository.PaymentRepository;
@@ -144,7 +144,7 @@ class PaymentServiceTest {
         }
 
         @Test
-        @DisplayName("요청 금액이 주문 총액과 다르면 InvalidTotalPriceException")
+        @DisplayName("요청 금액이 주문 총액과 다르면 OrderTotalPriceMismatchException")
         void create_fail_whenTotalPriceMismatch() {
             // given
             Long actorId = 1L;
@@ -156,7 +156,7 @@ class PaymentServiceTest {
 
             // when & then
             assertThatThrownBy(() -> paymentService.create(actorId, request))
-                    .isInstanceOf(InvalidTotalPriceException.class);
+                    .isInstanceOf(OrderTotalPriceMismatchException.class);
 
             then(paymentRepository).shouldHaveNoInteractions();
         }
