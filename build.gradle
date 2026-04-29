@@ -35,6 +35,7 @@ dependencies {
     // ===== AI API 호출용 (Gemini) =====
     implementation 'org.springframework.boot:spring-boot-starter-webflux' // WebClient
     implementation 'org.springframework.ai:spring-ai-starter-model-openai:1.1.4'
+    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai:1.1.4'
     // ===== 모니터링/헬스체크 (배포 시 유용) =====
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     // ===== 설정 메타데이터 =====
@@ -63,16 +64,12 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-def generated = 'src/main/generated'
+def generated = layout.buildDirectory.dir('generated/sources/annotationProcessor/java/main')
 
 sourceSets {
-    main.java.srcDirs += [generated]
+    main.java.srcDirs += generated
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.generatedSourceOutputDirectory = file(generated)
-}
-
-clean {
-    delete file(generated)
+    options.generatedSourceOutputDirectory = generated.get().asFile
 }

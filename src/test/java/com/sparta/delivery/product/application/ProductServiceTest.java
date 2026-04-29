@@ -11,6 +11,7 @@ import static org.mockito.Mockito.never;
 
 import com.sparta.delivery.ai.application.AiDescriptionService;
 import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
+import java.util.concurrent.CompletableFuture;
 import com.sparta.delivery.product.domain.entity.DescriptionSource;
 import com.sparta.delivery.product.domain.entity.Product;
 import com.sparta.delivery.product.domain.exception.DuplicateProductNameException;
@@ -146,7 +147,7 @@ class ProductServiceTest {
                     "Americano",
                     4500,
                     "고소한 맛을 강조해줘"
-            )).willReturn("AI generated description");
+            )).willReturn(CompletableFuture.completedFuture("AI generated description"));
             given(productRepository.save(any(Product.class))).willAnswer(invocation -> {
                 Product product = invocation.getArgument(0);
                 ReflectionTestUtils.setField(product, "productId", UUID.randomUUID());
@@ -190,7 +191,7 @@ class ProductServiceTest {
                     "Americano",
                     4500,
                     "고소한 맛을 강조해줘"
-            )).willThrow(new ExternalLlmCallFailedException());
+            )).willReturn(CompletableFuture.failedFuture(new ExternalLlmCallFailedException()));
 
             // when & then
             assertThatThrownBy(() -> productService.create(ownerId, UserRole.OWNER, storeId, request))

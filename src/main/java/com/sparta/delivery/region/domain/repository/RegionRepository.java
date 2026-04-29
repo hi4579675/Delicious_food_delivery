@@ -26,7 +26,17 @@ public interface RegionRepository extends JpaRepository<Region, UUID> {
 
     Page<Region> findByRegionNameContaining(String keyword, Pageable pageable);
 
+    Page<Region> findByIsActiveTrue(Pageable pageable);
+
+    Page<Region> findByIsActiveFalse(Pageable pageable);
+
+    Page<Region> findByRegionNameContainingAndIsActiveTrue(String keyword, Pageable pageable);
+
     List<Region> findByParentId(UUID parentId);
 
+    List<Region> findByParentIdAndIsActiveTrue(UUID parentId);
+
     List<Region> findByParentIdIsNull();
+
+    List<Region> findByParentIdIsNullAndIsActiveTrue();
 }

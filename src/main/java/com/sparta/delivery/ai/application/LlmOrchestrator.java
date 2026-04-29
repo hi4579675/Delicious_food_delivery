@@ -2,12 +2,10 @@ package com.sparta.delivery.ai.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sparta.delivery.ai.domain.entity.Llm;
 import com.sparta.delivery.ai.domain.entity.LlmCall;
-import com.sparta.delivery.ai.domain.exception.ActiveLlmNotFoundException;
 import com.sparta.delivery.ai.domain.exception.LlmInputSnapshotSerializationException;
 import com.sparta.delivery.ai.domain.repository.LlmCallRepository;
-import com.sparta.delivery.ai.domain.repository.LlmRepository;
+import com.sparta.delivery.ai.domain.vo.ActiveLlmInfo;
 import com.sparta.delivery.ai.infrastructure.external.llm.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,27 +13,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class LlmOrchestrator {
 
-    private final LlmRepository llmRepository;
+    private final LlmService llmService;
     private final LlmCallRepository llmCallRepository;
     private final LlmClientRegistry llmClientRegistry;
     private final ObjectMapper objectMapper;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public LlmGenerateResponse generate(Long actorId, LlmInputSnapshot inputSnapshot) {
-        Llm activeLlm = llmRepository.findByIsActiveTrue()
-                .orElseThrow(ActiveLlmNotFoundException::new);
+        ActiveLlmInfo activeLlm = llmService.getActiveLlm();
 
         String serializedInputSnapshot = createJsonInputSnapshot(inputSnapshot);
 
-        LlmClient client = llmClientRegistry.getClient(activeLlm.getProvider());
+        LlmClient client = llmClientRegistry.getClient(activeLlm.provider());
 
         LlmGenerateResponse response = client.generate(
                 activeLlm,
@@ -43,7 +38,7 @@ public class LlmOrchestrator {
         );
 
         LlmCall llmCall = LlmCall.create(
-                activeLlm.getLlmId(),
+                activeLlm.llmId(),
                 serializedInputSnapshot,
                 response.finishReason(),
                 response.rawResponse(),

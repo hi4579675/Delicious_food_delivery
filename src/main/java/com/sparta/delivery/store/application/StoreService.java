@@ -116,10 +116,26 @@ public class StoreService {
     }
 
     /**
+     * 비활성화된 가게 목록을 조회한다.
+     */
+    public PageResponse<StoreResponse> getInactiveStores(Pageable pageable) {
+        Page<StoreResponse> page = storeRepository.findAllByIsActiveFalse(pageable)
+                .map(StoreResponse::from);
+
+        return PageResponse.from(page);
+    }
+
+    /**
      * 가게를 단건 조회한다.
      */
     public StoreResponse getStore(UUID storeId) {
-        return StoreResponse.from(getStoreOrThrow(storeId));
+        Store store = getStoreOrThrow(storeId);
+
+        if (!store.getIsActive()) {
+            throw new StoreNotFoundException();
+        }
+
+        return StoreResponse.from(store);
     }
 
     /**

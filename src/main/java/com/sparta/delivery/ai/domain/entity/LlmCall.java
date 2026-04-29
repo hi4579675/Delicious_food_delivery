@@ -14,7 +14,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "p_llm_calls")
+@Table(
+        name = "p_llm_calls",
+        indexes = {
+                @Index(name = "idx_llm_calls_llm_id", columnList = "llm_id"),
+                @Index(name = "idx_llm_calls_created_at", columnList = "created_at")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class LlmCall {

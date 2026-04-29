@@ -1,169 +1,155 @@
 # 배포 파이프라인
 
-> **이 문서를 보면**: 코드가 어떻게 서버까지 올라가는지, 배포 중 장애 시 어떻게 복구하는지, 외부 API는 어떻게 동작하는지 파악 가능.
+> **이 문서를 보면**: 현재 운영 배포가 어떤 흐름으로 실행되는지, 어떤 파일과 Secret이 필요한지, 장애가 났을 때 어디를 먼저 봐야 하는지 파악할 수 있습니다.
 >
-> **언제 다시 보나요**: CI/CD 수정 시, 배포 장애 발생 시, 외부 API 정책 변경 시.
+> **언제 다시 보나요**: CI/CD 수정 시, 배포 실패 시, 운영 배포 절차를 새 팀원에게 설명할 때.
 
-> 🔖 인프라 구성(EC2 스펙, 네트워크, 보안그룹 등)은 [인프라 명세](./infrastructure.md)를 먼저 확인.
+> 🔖 인프라 구성(EC2, 네트워크, 보안그룹, 컨테이너 배치)은 [인프라 명세](./infrastructure.md)를 먼저 확인하세요.
 
 ---
 
 ## 한 줄 요약
 
-**GitHub Actions**가 main 브랜치 push를 감지하여 빌드·테스트 후 **SSH로 EC2 접속 → Docker 재기동**. 롤백은 수동 재배포.
+`main` 브랜치에 push가 발생하면 **GitHub Actions CD**가 테스트를 수행하고 Docker 이미지를 **GHCR**에 업로드한 뒤, **EC2에 SSH 접속하여 `deploy.sh`를 실행**해 컨테이너를 재기동합니다.
 
 ---
 
 ## 목차
 
-- [1. 파이프라인 흐름](#1-파이프라인-흐름)
+- [1. 현재 배포 흐름](#1-현재-배포-흐름)
 - [2. GitHub Actions 워크플로우](#2-github-actions-워크플로우)
-- [3. Dockerfile / deploy.sh](#3-dockerfile--deploysh)
-- [4. Secrets 관리](#4-secrets-관리)
-- [5. 롤백 절차](#5-롤백-절차)
+- [3. 배포에 사용되는 파일](#3-배포에-사용되는-파일)
+- [4. Secrets 및 환경 변수](#4-secrets-및-환경-변수)
+- [5. 롤백 및 장애 대응](#5-롤백-및-장애-대응)
 - [6. 외부 API 운영 동작](#6-외부-api-운영-동작)
-- [7. 운영 (헬스체크 / 로그)](#7-운영-헬스체크--로그)
-- [8. 팀 결정 체크리스트](#8-팀-결정-체크리스트)
+- [7. 운영 확인 포인트](#7-운영-확인-포인트)
+- [8. 현재 한계와 개선 포인트](#8-현재-한계와-개선-포인트)
 
 ---
 
-## 1. 파이프라인 흐름
+## 1. 현재 배포 흐름
 
-> **현재 상태**: `.github/workflows/` 디렉토리 **미구현**. 아래는 예정 구조.
+### CI
 
-```
- 개발자 push (main 또는 TBD)
-         │
-         ▼
- GitHub Actions 트리거
-         │
- ┌───────┼────────────────────────────────┐
- │  [1] Build     ./gradlew build          │
- │  [2] Test      ./gradlew test           │
- │  [3] Docker    docker build + tag       │
- │  [4] Push      이미지 레지스트리으로     │  ← TBD
- │  [5] SSH       EC2 접속                 │
- │  [6] Deploy    docker compose pull      │
- │                docker compose up -d     │
- │  [7] Health    /actuator/health 확인    │
- └──────────────────────────────────────────┘
+- 트리거: `dev`, `main` 브랜치의 `push`, `pull_request`
+- 실행 내용:
+  - `./gradlew testClasses --no-daemon`
+  - `./gradlew test --no-daemon`
+
+### CD
+
+- 트리거:
+  - `main` 브랜치 `push`
+  - `workflow_dispatch` 수동 실행
+
+### 전체 흐름
+
+```text
+개발자 -> GitHub push / merge
+          |
+          +-> CI (dev, main)
+          |     - testClasses
+          |     - test
+          |
+          +-> CD (main only)
+                1. test
+                2. Docker image build
+                3. GHCR push
+                4. docker-compose.prod.yml / deploy.sh 를 EC2로 전송
+                5. EC2에서 deploy.sh 실행
+                6. app / postgres / redis 재기동
+                7. /actuator/health 확인
 ```
 
 ---
 
 ## 2. GitHub Actions 워크플로우
 
-`.github/workflows/deploy.yml` 예정 초안:
+### CI 워크플로우
 
-```yaml
-name: Deploy to EC2
+핵심 포인트:
+- `dev`, `main` 브랜치의 `push`, `pull_request`에서 실행
+- Java 17 환경에서 테스트 수행
+- 목적은 **머지 전 컴파일 및 테스트 자동 검증**
 
-on:
-  push:
-    branches: [main]   # TBD: 팀 확정
+### CD 워크플로우
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+잡 구성:
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+1. `build-and-push`
+   - 소스 checkout
+   - Java 17 설정
+   - `./gradlew test --no-daemon`
+   - 이미지명 계산: `ghcr.io/<owner>/<repo>`
+   - Docker image build
+   - GHCR에 `latest`, `sha-${github.sha}` 태그 push
 
-      - name: Build & Test
-        run: ./gradlew build
+2. `deploy`
+   - `docker-compose.prod.yml`, `scripts/deploy.sh`를 EC2로 복사
+   - EC2에서 `deploy.sh` 실행
+   - 실행 시 `APP_IMAGE`, `GHCR_USERNAME`, `GHCR_TOKEN` 환경변수 전달
 
-      - name: Build Docker image
-        run: docker build -t delivery:${{ github.sha }} .
-
-      - name: Push image          # TBD: GHCR / Docker Hub
-        run: echo "TBD"
-
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd /home/ubuntu/app
-            docker compose pull
-            docker compose up -d
-```
-
-### 주요 결정 사항 (TBD)
-
-| 항목 | 선택지 |
-|---|---|
-| 트리거 브랜치 | `main` push / PR merge / tag push |
-| 이미지 레지스트리 | GHCR / Docker Hub / ECR |
-| 배포 스크립트 위치 | EC2 내 `deploy.sh` / Actions 인라인 |
+현재 배포는 **SSH 기반**입니다. 즉 GitHub Actions가 EC2에 직접 SSH 접속하여 배포 스크립트를 실행하는 구조입니다.
 
 ---
 
-## 3. Dockerfile / deploy.sh
+## 3. 배포에 사용되는 파일
 
-현재 **미작성**. 팀에서 작성 후 레포 루트에 포함.
+### 1) Dockerfile
 
-### Dockerfile 초안
+- Java 17 멀티스테이지 빌드
+- `bootJar` 생성 후 실행 이미지에 복사
+- 컨테이너 내부 포트 `8080`
+- 기본 실행 프로필은 `prod`
 
-```dockerfile
-FROM eclipse-temurin:17-jre-alpine
-WORKDIR /app
-COPY build/libs/delivery-*.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-```
+### 2) 운영용 Compose
 
-### 운영 docker-compose 추가 서비스
+구성 서비스:
+- `app`
+- `postgres`
+- `redis`
 
-```yaml
-# docker-compose.yml에 추가
-backend:
-  image: delivery:${IMAGE_TAG:-latest}
-  ports:
-    - "8080:8080"
-  depends_on:
-    postgres: { condition: service_healthy }
-    redis:    { condition: service_started }
-  environment:
-    SPRING_PROFILES_ACTIVE: prod
-    DB_HOST: postgres
-    DB_PORT: 5432
-    DB_NAME: ${POSTGRES_DB}
-    DB_USERNAME: ${POSTGRES_USER}
-    DB_PASSWORD: ${POSTGRES_PASSWORD}
-    REDIS_HOST: redis
-    REDIS_PASSWORD: ${REDIS_PASSWORD}
-    JWT_SECRET: ${JWT_SECRET}
-    OPENAI_API_KEY: ${OPENAI_API_KEY}
-```
+주요 특징:
+- 앱은 `127.0.0.1:8080:8080`으로만 바인딩
+- PostgreSQL, Redis는 외부 포트 미노출
+- 앱은 `APP_IMAGE` 환경변수로 전달받은 이미지를 사용
+
+### 3) 배포 스크립트
+
+역할:
+- 필수 환경변수(`APP_IMAGE`) 검증
+- `.env` 존재 여부 확인
+- GHCR 로그인
+- 앱 이미지 pull
+- `postgres`, `redis`, `app` 순서대로 기동
+- `curl http://127.0.0.1:8080/actuator/health` 헬스체크
 
 ---
 
-## 4. Secrets 관리
+## 4. Secrets 및 환경 변수
 
-### GitHub Secrets → EC2 전달
+### GitHub Actions Secrets
 
-```
-[GitHub Secrets]
- ├── EC2_SSH_KEY, EC2_HOST           ← Actions가 SSH 접속 시 사용
- ├── DB_PASSWORD, REDIS_PASSWORD      ← .env로 EC2에 전달
- ├── JWT_SECRET                       ← 동일
- └── OPENAI_API_KEY                   ← 동일
-        │
-        ▼ (Actions가 SSH로 .env 업로드 또는 환경변수 주입)
-[EC2]
- └── docker compose up -d (컨테이너가 환경변수 읽어 기동)
-```
+현재 배포에 필요한 주요 Secret:
 
-### 로컬 개발 (`.env`)
+- `EC2_HOST`
+- `EC2_USERNAME`
+- `EC2_PORT`
+- `EC2_SSH_KEY`
+- `EC2_APP_DIR`
+- `GHCR_USERNAME`
+- `GHCR_TOKEN`
 
-`.env.example`:
+주의:
+- `EC2_SSH_KEY`에는 **pem 파일 내용 전체**가 들어가야 합니다.
+- 파일명이나 경로가 아니라, `BEGIN ... END`를 포함한 **개인키 본문 전체**여야 합니다.
+
+### EC2 `.env`
+
+운영 서버에서는 `${EC2_APP_DIR}/.env` 파일을 직접 관리합니다.
+
+주요 값:
+
 ```env
 POSTGRES_DB=delivery
 POSTGRES_USER=delivery
@@ -171,91 +157,116 @@ POSTGRES_PASSWORD=changeme
 REDIS_PASSWORD=changeme
 JWT_SECRET=your-256-bit-secret-key-here
 OPENAI_API_KEY=your-openai-api-key
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
-`.env`는 Git 커밋 금지.
+원칙:
+- `.env`는 Git에 커밋하지 않음
+- 운영 비밀번호와 키는 EC2에만 보관
 
 ---
 
-## 5. 롤백 절차
+## 5. 롤백 및 장애 대응
 
-**자동화 없음.** 문제 발생 시 수동 대응:
+### 현재 롤백 방식
 
-1. 문제 커밋 식별
-2. `git revert <commit>` 후 `main`에 push → 파이프라인 재실행으로 이전 상태로 복구
-3. 긴급한 경우, 이미지 태그 기반이면 EC2에서 수동으로 이전 태그로 재기동:
-   ```bash
-   docker compose down
-   IMAGE_TAG=<previous-sha> docker compose up -d
-   ```
+현재는 **자동 롤백 없음**, 수동 대응 기반입니다.
 
-### 확장 여지 
+가능한 대응:
 
-> "현재는 git revert 기반 수동 롤백입니다. 실서비스라면 Blue-Green 배포, Actions 워크플로우에 자동 롤백 step 추가, 이미지 태그 버전 관리 정책 등을 도입할 수 있습니다."
+1. 문제 커밋 `git revert`
+2. `main`에 다시 push
+3. CD를 재실행해 이전 상태로 복구
+
+또는, 이미지 태그를 알고 있으면 수동 재배포도 가능합니다.
+
+예:
+
+```bash
+cd /home/ubuntu/app
+APP_IMAGE=ghcr.io/hi4579675/delicious_food_delivery:sha-<commit> ./scripts/deploy.sh
+```
+
+### 실제 겪은 이슈
+
+- `EC2_SSH_KEY` Secret 값 형식 오류로 SSH 접속 실패
+- 보안그룹 22 포트 정책 때문에 GitHub Actions가 EC2에 접속하지 못한 적이 있음
+
+즉 현재 배포 구조에서 가장 먼저 볼 것은:
+- GitHub Actions 로그
+- Secret 값
+- EC2 보안그룹
 
 ---
 
 ## 6. 외부 API 운영 동작
 
-### Gemini
+### LLM Providers
 
-| 항목 | 내용 |
-|---|---|
-| 호출 레이어 | `ai/application/AiService` → `ai/infrastructure/external/gemini/GeminiClient` |
-| 클라이언트 | Spring `WebClient` (WebFlux) |
-| timeout | 10초 (TBD — 팀 확정) |
-| 재시도 / 폴백 | **미적용** (학습 프로젝트 범위 외) |
-| 실패 처리 | 예외 발생 시 `AI-001` 에러 코드로 사용자 응답 |
-| 입력 한도 | **TBD** ([도메인 명세](../design/domain.md#6-5-ai-연동)=100자 vs `application.yml`=500자 불일치, 팀 확정 필요) |
-| 프롬프트 정책 | "답변을 최대한 간결하게 50자 이하로" 자동 삽입 |
+현재 배포 관점에서 외부 AI 연동은 `OPENAI_API_KEY`, `GEMINI_API_KEY` 환경변수를 함께 사용합니다.
 
-### 확장 여지
-
-> "현재는 timeout + 에러 응답만 두고 있습니다. 실서비스라면 Resilience4j로 retry/circuit breaker, Redis 캐시로 동일 요청 캐싱, Rate Limiter로 사용자별 호출 한도 적용 등을 추가할 수 있습니다."
+운영 특성:
+- 서버에서 외부 OpenAI API 또는 Google Gemini API로 아웃바운드 요청
+- 활성 LLM 설정의 provider 값에 따라 적절한 클라이언트를 선택
+- 별도 재시도 / circuit breaker는 아직 없음
+- 현재는 기본 timeout 및 예외 응답 처리 수준
 
 ---
 
-## 7. 운영 (헬스체크 / 로그)
+## 7. 운영 확인 포인트
 
-### 헬스체크
+### GitHub Actions
 
-- `/actuator/health` — 컨테이너 상태 확인 (배포 후 자동 검증)
-- `/actuator/info` — 애플리케이션 정보
-- prod에서만 노출 (`application.yml`에서 설정)
+- CI 초록불 확인
+- CD의 `build-and-push`, `deploy` 잡 성공 여부 확인
 
-### 로그
+### GHCR
 
-- **현재**: `docker logs <container>`로 확인. 중앙화 X
-- **확장 시**: CloudWatch Logs / Loki / ELK 등 도입 가능
+- `ghcr.io/hi4579675/delicious_food_delivery`
+- `latest`, `sha-...` 태그 push 여부 확인
 
-### 장애 대응
+### EC2
 
-- 현재: 수동 — 로그 확인 → 재배포 또는 git revert 후 재배포
-- 확장 시: Slack Webhook 알림, CloudWatch 알람 규칙 추가 가능
+```bash
+docker ps
+curl http://127.0.0.1:8080/actuator/health
+```
+
+정상 기대값:
+- `delivery-app`
+- `delivery-postgres`
+- `delivery-redis`
+가 실행 중
+
+### 외부 접근
+
+- HTTP 기준 Swagger 확인
+- 예: `http://<EC2-IP>/swagger-ui.html`
+
+현재는 **HTTP(80)만 실제 동작 중**이며, HTTPS는 아직 적용 전입니다.
 
 ---
 
-## 8. 팀 결정 체크리스트
+## 8. 현재 한계와 개선 포인트
 
-### 파이프라인
-- [ ] 배포 트리거 브랜치 (`main` push? tag?)
-- [ ] 이미지 레지스트리 (GHCR / Docker Hub)
-- [ ] 배포 스크립트 위치 (Actions 인라인 vs EC2 `deploy.sh`)
+- 배포는 아직 **SSH 기반 수동 운영 친화형 구조**
+- `APP_IMAGE`를 런타임에 주입하는 방식이라 서버에서 `docker compose ps` 확인 시 별도 값이 필요할 수 있음
+- 롤백 자동화 없음
+- CD는 현재 `latest` 태그를 배포 기준으로 사용
+- DB 마이그레이션 도구(Flyway/Liquibase) 미도입
+- HTTPS 미적용
 
-### 외부 API
-- [ ] Gemini 입력 한도 (100 / 500 / 기타) — domain.md와 `application.yml` 통일 필수
-- [ ] timeout 시간 (10초 / 기타)
-- [ ] 실패 시 사용자 응답 문구
-
-### 운영
-- [ ] 모니터링 수준 (Actuator만? Slack 알림?)
-- [ ] 로그 중앙화 여부 (당장은 X, 확장 시?)
-- [ ] 롤백 자동화 여부 (당장은 수동)
+향후 개선 후보:
+- `sha` 태그 기반 배포
+- CD concurrency 추가
+- 헬스체크 실패 시 `docker compose logs` 자동 출력
+- Flyway/Liquibase 도입 후 `ddl-auto: validate` 복귀
+- HTTPS 적용
+- SSH 대신 SSM / self-hosted runner 검토
 
 ---
 
 ## 관련 문서
 
-- [인프라 명세](./infrastructure.md) — EC2, 네트워크, 컨테이너 구성
+- [인프라 명세](./infrastructure.md)
 - [프로젝트 개요](../overview.md)
-- [패키지·계층 구조 가이드](../architecture/package-structure.md)

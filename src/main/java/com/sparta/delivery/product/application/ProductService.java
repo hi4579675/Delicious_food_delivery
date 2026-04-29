@@ -1,6 +1,8 @@
 package com.sparta.delivery.product.application;
 
 import com.sparta.delivery.ai.application.AiDescriptionService;
+import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
+import com.sparta.delivery.store.domain.exception.StoreNotFoundException;
 import com.sparta.delivery.product.domain.entity.DescriptionSource;
 import com.sparta.delivery.product.domain.entity.Product;
 import com.sparta.delivery.product.domain.exception.DuplicateProductNameException;
@@ -25,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @Slf4j
@@ -69,12 +72,9 @@ public class ProductService {
         // hidden 이라면 권한 별 분기 처리
         Store store = getStoreOrThrow(product.getStoreId());
 
-        boolean canViewHidden =
-                actorRole == UserRole.MANAGER
-                || actorRole == UserRole.MASTER
-                || (actorRole == UserRole.OWNER && store.getUserId().equals(actorId));
+        boolean hiddenAccessibility = hiddenAccessibility(actorId, actorRole, store);
 
-        if (!canViewHidden) {
+        if (!hiddenAccessibility) {
             throw new ProductNotFoundException();
         }
 
@@ -92,10 +92,7 @@ public class ProductService {
     ) {
         Store store = getStoreOrThrow(storeId);
 
-        boolean canViewHidden =
-                actorRole == UserRole.MANAGER
-                || actorRole == UserRole.MASTER
-                || (actorRole == UserRole.OWNER && store.getUserId().equals(actorId));
+        boolean hiddenAccessibility = hiddenAccessibility(actorId, actorRole, store);
 
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
@@ -105,7 +102,7 @@ public class ProductService {
 
         String normalizedKeyword = normalizeKeyword(keyword);
 
-        Page<Product> products =  getProductPage(storeId, normalizedKeyword, canViewHidden, pageable);
+        Page<Product> products = getProductPage(storeId, normalizedKeyword, hiddenAccessibility, pageable);
 
         return products.map(ProductResponse::from);
     }
@@ -172,9 +169,8 @@ public class ProductService {
 
 
     private Store getStoreOrThrow(UUID storeId) {
-        // TODO: Store 도메인 예외 구현 즉시 해당 예외로 변경
         return storeRepository.findByStoreId(storeId)
-                .orElseThrow(IllegalArgumentException::new);
+                .orElseThrow(StoreNotFoundException::new);
     }
     private Product getProductOrThrow(UUID productId) {
         // 존재하는 상품인지 확인
@@ -205,6 +201,12 @@ public class ProductService {
         if (nameChanged && productRepository.existsByStoreIdAndProductName(product.getStoreId(), productName)) {
             throw new DuplicateProductNameException();
         }
+    }
+
+    private boolean hiddenAccessibility(Long actorId, UserRole actorRole, Store store) {
+        return actorRole == UserRole.MANAGER
+                || actorRole == UserRole.MASTER
+                || (actorRole == UserRole.OWNER && store.getUserId().equals(actorId));
     }
 
     private Product createProduct(
@@ -276,12 +278,19 @@ public class ProductService {
 
     private String resolveDescription(Long actorId, ProductCreateRequest request) {
         if (request.shouldGenerateDescription()) {
-            return aiDescriptionService.generateDescription(
-                    actorId,
-                    request.productName(),
-                    request.price(),
-                    request.aiPromptText()
-            );
+            try {
+                return aiDescriptionService.generateDescription(
+                        actorId,
+                        request.productName(),
+                        request.price(),
+                        request.aiPromptText()
+                ).get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new ExternalLlmCallFailedException();
+            } catch (ExecutionException e) {
+                throw new ExternalLlmCallFailedException();
+            }
         }
         return request.description();
     }
