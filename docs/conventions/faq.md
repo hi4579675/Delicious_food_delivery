@@ -65,7 +65,7 @@ public UserInfo signup(SignupCommand command) { ... }
 
 필요할 때만 등장합니다:
 - `persistence/repository/` — 커스텀 쿼리 구현체
-- `external/` — 외부 API 클라이언트 (`GeminiClient` 등)
+- `external/` — 외부 API 클라이언트 (`OpenAiClient`, `GeminiClient` 등)
 - `jwt/` — JWT Provider/Filter (auth 도메인만)
 
 **기본 프로젝트 시작 시엔 비어 있어도 됩니다.**

@@ -30,7 +30,7 @@
 | 결제 방식 | 카드 결제만 가능 (PG 실제 연동 없이 DB 저장만) |
 | 데이터 보존 | 모든 데이터 Soft Delete (`deleted_at` 기록) |
 | 숨김 처리 | 상품(메뉴) 숨김과 삭제는 별도 필드 (`is_hidden` ≠ `deleted_at`) |
-| AI 연동 | Google Gemini API로 상품 설명 자동 생성 |
+| AI 연동 | OpenAI / Google Gemini API로 상품 설명 자동 생성 |
 
 ---
 
@@ -46,7 +46,7 @@
 | Cache / Session | Redis 7+ (Docker) |
 | Build | Gradle 8.x |
 | API 문서 | springdoc-openapi (Swagger) |
-| AI | Google Gemini 1.5 Flash |
+| AI | Spring AI (OpenAI, Google GenAI) |
 | 컨테이너 | Docker + docker-compose |
 | CI/CD | GitHub Actions |
 | 서버 | AWS EC2 t2.micro (Ubuntu 22.04) |

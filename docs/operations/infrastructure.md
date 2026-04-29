@@ -10,7 +10,7 @@
 
 ## 한 줄 요약
 
-현재 운영 테스트 환경은 **AWS EC2 1대** 위에서 **Nginx + Docker(app / PostgreSQL / Redis)** 구조로 동작하며, 외부 AI 연동은 **OpenAI API**를 사용합니다.
+현재 운영 테스트 환경은 **AWS EC2 1대** 위에서 **Nginx + Docker(app / PostgreSQL / Redis)** 구조로 동작하며, 외부 AI 연동은 **OpenAI / Google Gemini API**를 사용합니다.
 
 ---
 
@@ -50,7 +50,7 @@ Spring Boot app container
    |
    +----> PostgreSQL container
 
-Spring Boot app -> OpenAI API
+Spring Boot app -> OpenAI API / Google Gemini API
 GitHub Actions -> GHCR push -> EC2 SSH deploy
 EC2 -> GHCR pull
 ```
@@ -107,6 +107,7 @@ EC2 -> GHCR pull
 - `REDIS_PASSWORD`
 - `JWT_SECRET`
 - `OPENAI_API_KEY`
+- `GEMINI_API_KEY`
 
 실제 전달 경로는 [배포 파이프라인](./deployment.md#4-secrets-및-환경-변수) 참고.
 
@@ -159,11 +160,11 @@ EC2 -> GHCR pull
 
 ## 6. 외부 API 연결 지점
 
-현재 외부 AI 연동은 **OpenAI API** 기준으로 동작합니다.
+현재 외부 AI 연동은 **OpenAI / Google Gemini API** 기준으로 동작합니다.
 
 운영 방식:
-- EC2의 앱 컨테이너가 인터넷 아웃바운드로 OpenAI API 호출
-- API 키는 `OPENAI_API_KEY` 환경변수 사용
+- EC2의 앱 컨테이너가 인터넷 아웃바운드로 OpenAI API 또는 Google Gemini API 호출
+- API 키는 `OPENAI_API_KEY`, `GEMINI_API_KEY` 환경변수 사용
 
 ---
 

@@ -157,6 +157,7 @@ POSTGRES_PASSWORD=changeme
 REDIS_PASSWORD=changeme
 JWT_SECRET=your-256-bit-secret-key-here
 OPENAI_API_KEY=your-openai-api-key
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 원칙:
@@ -200,12 +201,13 @@ APP_IMAGE=ghcr.io/hi4579675/delicious_food_delivery:sha-<commit> ./scripts/deplo
 
 ## 6. 외부 API 운영 동작
 
-### OpenAI
+### LLM Providers
 
-현재 배포 관점에서 외부 AI 연동은 `OPENAI_API_KEY` 환경변수를 사용합니다.
+현재 배포 관점에서 외부 AI 연동은 `OPENAI_API_KEY`, `GEMINI_API_KEY` 환경변수를 함께 사용합니다.
 
 운영 특성:
-- 서버에서 외부 OpenAI API로 아웃바운드 요청
+- 서버에서 외부 OpenAI API 또는 Google Gemini API로 아웃바운드 요청
+- 활성 LLM 설정의 provider 값에 따라 적절한 클라이언트를 선택
 - 별도 재시도 / circuit breaker는 아직 없음
 - 현재는 기본 timeout 및 예외 응답 처리 수준
 

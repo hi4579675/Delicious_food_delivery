@@ -42,7 +42,7 @@
 | `order` | 주문 생성 및 상태 전이, 주문 아이템 관리 | `p_order`, `p_order_items` | 주문 CRUD, 상태 플로우 |
 | `payment` | 주문 결제 처리 | `p_payment` | 주문 완료 처리 |
 | `review` | 리뷰/평점 작성, 가게 평점 집계 | `p_review` | 리뷰 및 평점 기능 |
-| `ai` | Gemini API 연동, 프롬프트 가공, 요청 이력 | `p_llms`, `p_llm_calls` | AI API 연동 |
+| `ai` | OpenAI / Gemini 연동, 프롬프트 가공, 요청 이력 | `p_llms`, `p_llm_calls` | AI API 연동 |
 
 ### 요구사항 매핑
 
@@ -52,7 +52,7 @@
 | 2. 사용자 인증 (회원가입/로그인) | `user`, `auth` |
 | 2. 권한 체계 (CUSTOMER/OWNER/MANAGER/MASTER) | `user`, `common` (Security) |
 | 2. 주문 상태 플로우 | `order` |
-| 3. AI API 연동 (Gemini) | `ai` |
+| 3. AI API 연동 (OpenAI / Gemini) | `ai` |
 | 4. 클라우드 배포 | (인프라) |
 | 5. 리뷰 및 평점 | `review`, `store` (평균 평점 집계) |
 | 6. API 문서화 (Swagger) | `common` (설정), 각 도메인 (컨트롤러) |
@@ -175,6 +175,7 @@ PENDING (주문요청, CUSTOMER)
 
 - 입력 텍스트는 100자로 제한
 - 요청 시 "답변을 최대한 간결하게 50자 이하로" 프롬프트 자동 삽입
+- 활성 LLM 설정에 따라 OpenAI 또는 Google Gemini provider를 선택해 호출
 - AI 요청 이력은 `p_llm_calls` 테이블에 저장
 
 ---
