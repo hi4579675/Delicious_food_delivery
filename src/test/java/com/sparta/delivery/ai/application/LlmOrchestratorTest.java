@@ -17,13 +17,12 @@ import com.sparta.delivery.ai.domain.exception.ActiveLlmNotFoundException;
 import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
 import com.sparta.delivery.ai.domain.exception.LlmInputSnapshotSerializationException;
 import com.sparta.delivery.ai.domain.repository.LlmCallRepository;
-import com.sparta.delivery.ai.domain.repository.LlmRepository;
+import com.sparta.delivery.ai.domain.vo.ActiveLlmInfo;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmClient;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmClientRegistry;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmInputSnapshot;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,8 +37,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class LlmOrchestratorTest {
 
+    // LlmOrchestrator는 LlmService.getActiveLlm()을 통해 활성 LLM을 조회한다.
+    // LlmRepository를 직접 mock하지 않는다.
     @Mock
-    private LlmRepository llmRepository;
+    private LlmService llmService;
 
     @Mock
     private LlmCallRepository llmCallRepository;
@@ -69,14 +70,14 @@ class LlmOrchestratorTest {
             String prompt = "prompt";
             LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot(prompt, "Americano", 4500, "고소한 맛을 강조해줘");
             String inputSnapshot = "{\"prompt\":\"prompt\"}";
-            Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
+            ActiveLlmInfo activeLlm = new ActiveLlmInfo(llmId, "gpt-5.4-mini", LlmProvider.OPENAI);
             LlmGenerateResponse llmGenerateResponse = new LlmGenerateResponse(
                     "generated text",
                     "{\"result\":\"ok\"}",
                     "200"
             );
 
-            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
+            given(llmService.getActiveLlm()).willReturn(activeLlm);
             given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
             given(llmClientRegistry.getClient(LlmProvider.OPENAI)).willReturn(llmClient);
             given(llmClient.generate(eq(activeLlm), any())).willReturn(llmGenerateResponse);
@@ -92,7 +93,7 @@ class LlmOrchestratorTest {
             then(llmCallRepository).should().save(llmCallCaptor.capture());
 
             LlmCall savedCall = llmCallCaptor.getValue();
-            assertThat(savedCall.getLlmId()).isEqualTo(llmId);
+            assertThat(savedCall.getLlmId()).isEqualTo(activeLlm.llmId());
             assertThat(savedCall.getProductId()).isNull();
             assertThat(savedCall.getInputSnapshot()).isEqualTo(inputSnapshot);
             assertThat(savedCall.getFinishReason()).isEqualTo("200");
@@ -103,15 +104,52 @@ class LlmOrchestratorTest {
         }
 
         @Test
+        @DisplayName("generates text with google gemini active llm")
+        void generate_success_withGeminiLlm() throws Exception {
+            // given
+            UUID llmId = UUID.randomUUID();
+            Long actorId = 1L;
+            String prompt = "prompt";
+            LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot(prompt, "Americano", 4500, "고소한 맛을 강조해줘");
+            String inputSnapshot = "{\"prompt\":\"prompt\"}";
+            ActiveLlmInfo activeLlm = new ActiveLlmInfo(llmId, "gemini-2.0-flash", LlmProvider.GOOGLE);
+            LlmGenerateResponse llmGenerateResponse = new LlmGenerateResponse(
+                    "generated text",
+                    "{\"result\":\"ok\"}",
+                    "STOP"
+            );
+
+            given(llmService.getActiveLlm()).willReturn(activeLlm);
+            given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
+            given(llmClientRegistry.getClient(LlmProvider.GOOGLE)).willReturn(llmClient);
+            given(llmClient.generate(eq(activeLlm), any())).willReturn(llmGenerateResponse);
+            given(llmCallRepository.save(any(LlmCall.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            LlmGenerateResponse response = llmOrchestrator.generate(actorId, llmInputSnapshot);
+
+            // then
+            assertThat(response).isEqualTo(llmGenerateResponse);
+
+            ArgumentCaptor<LlmCall> llmCallCaptor = ArgumentCaptor.forClass(LlmCall.class);
+            then(llmCallRepository).should().save(llmCallCaptor.capture());
+
+            LlmCall savedCall = llmCallCaptor.getValue();
+            assertThat(savedCall.getLlmId()).isEqualTo(activeLlm.llmId());
+            assertThat(savedCall.getFinishReason()).isEqualTo("STOP");
+            assertThat(savedCall.getGeneratedText()).isEqualTo("generated text");
+        }
+
+        @Test
         @DisplayName("throws when active llm does not exist")
         void generate_fail_whenActiveLlmNotFound() {
             // given
             Long actorId = 1L;
             LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot("prompt", "Americano", 4500, null);
 
-            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.empty());
+            given(llmService.getActiveLlm()).willThrow(new ActiveLlmNotFoundException());
 
-            // when // then
+            // when & then
             assertThatThrownBy(() -> llmOrchestrator.generate(actorId, llmInputSnapshot))
                     .isInstanceOf(ActiveLlmNotFoundException.class);
 
@@ -128,14 +166,14 @@ class LlmOrchestratorTest {
             String prompt = "prompt";
             LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot(prompt, "Americano", 4500, "고소한 맛을 강조해줘");
             String inputSnapshot = "{\"prompt\":\"prompt\"}";
-            Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
+            ActiveLlmInfo activeLlm = new ActiveLlmInfo(llmId, "gpt-5.4-mini", LlmProvider.OPENAI);
 
-            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
+            given(llmService.getActiveLlm()).willReturn(activeLlm);
             given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
             given(llmClientRegistry.getClient(LlmProvider.OPENAI)).willReturn(llmClient);
             given(llmClient.generate(eq(activeLlm), any())).willThrow(new ExternalLlmCallFailedException());
 
-            // when // then
+            // when & then
             assertThatThrownBy(() -> llmOrchestrator.generate(actorId, llmInputSnapshot))
                     .isInstanceOf(ExternalLlmCallFailedException.class);
 
@@ -149,13 +187,13 @@ class LlmOrchestratorTest {
             UUID llmId = UUID.randomUUID();
             Long actorId = 1L;
             LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot("prompt", "Americano", 4500, null);
-            Llm activeLlm = createLlm(llmId, "gpt-5.4-mini", LlmProvider.OPENAI, true);
+            ActiveLlmInfo activeLlm = new ActiveLlmInfo(llmId, "gpt-5.4-mini", LlmProvider.OPENAI);
 
-            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(activeLlm));
+            given(llmService.getActiveLlm()).willReturn(activeLlm);
             given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class)))
                     .willThrow(new JsonProcessingException("serialize fail") { });
 
-            // when // then
+            // when & then
             assertThatThrownBy(() -> llmOrchestrator.generate(actorId, llmInputSnapshot))
                     .isInstanceOf(LlmInputSnapshotSerializationException.class);
 
@@ -164,11 +202,5 @@ class LlmOrchestratorTest {
         }
     }
 
-    private Llm createLlm(UUID llmId, String llmName, LlmProvider provider, boolean isActive) {
-        Llm llm = Llm.create(llmName, provider, isActive);
-        ReflectionTestUtils.setField(llm, "llmId", llmId);
-        ReflectionTestUtils.setField(llm, "createdAt", LocalDateTime.now().minusDays(1));
-        ReflectionTestUtils.setField(llm, "updatedAt", LocalDateTime.now());
-        return llm;
-    }
 }
+

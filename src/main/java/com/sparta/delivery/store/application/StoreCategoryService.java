@@ -91,7 +91,13 @@ public class StoreCategoryService {
 
     /** 가게 카테고리를 단건 조회한다. */
     public StoreCategoryResponse getCategory(UUID categoryId) {
-        return StoreCategoryResponse.from(getCategoryOrThrow(categoryId));
+        StoreCategory category = getCategoryOrThrow(categoryId);
+
+        if (!category.getIsActive()) {
+            throw new StoreCategoryNotFoundException();
+        }
+
+        return StoreCategoryResponse.from(category);
     }
 
     /** 가게 카테고리 정보를 수정한다. */

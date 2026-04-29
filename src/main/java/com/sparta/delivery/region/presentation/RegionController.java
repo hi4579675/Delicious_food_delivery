@@ -67,6 +67,16 @@ public class RegionController {
         return ResponseEntity.ok(ApiResponse.success(regionService.searchRegions(keyword, pageable)));
     }
 
+    @Operation(summary = "비활성 지역 목록 조회")
+    @GetMapping("/inactive")
+    @PreAuthorize("hasAnyRole('MANAGER', 'MASTER')")
+    public ResponseEntity<ApiResponse<PageResponse<RegionResponse>>> getInactiveRegions(
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(regionService.getInactiveRegions(pageable)));
+    }
+
     @Operation(summary = "최상위 지역 목록 조회")
     @GetMapping("/root")
     public ResponseEntity<ApiResponse<List<RegionResponse>>> getRootRegions() {

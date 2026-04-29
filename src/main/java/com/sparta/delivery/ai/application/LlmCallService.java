@@ -38,7 +38,9 @@ public class LlmCallService {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 normalizePageSize(size),
-                Sort.by(Sort.Order.desc("createdAt"))
+                Sort.by(Sort.Order.desc("createdAt"),
+                        Sort.Order.desc("callId")
+                )
         );
         if (llmId != null) {
             return llmCallRepository.findByLlmId(llmId, pageable)

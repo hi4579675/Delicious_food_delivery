@@ -1,17 +1,19 @@
 package com.sparta.delivery.ai.application;
 
 import com.sparta.delivery.ai.domain.entity.Llm;
-import com.sparta.delivery.ai.domain.exception.CannotDeleteActiveLlmException;
-import com.sparta.delivery.ai.domain.exception.DuplicateLlmNameException;
-import com.sparta.delivery.ai.domain.exception.AiForbiddenException;
-import com.sparta.delivery.ai.domain.exception.LlmNotFoundException;
+import com.sparta.delivery.ai.domain.exception.*;
 import com.sparta.delivery.ai.domain.repository.LlmRepository;
+import com.sparta.delivery.ai.domain.vo.ActiveLlmInfo;
 import com.sparta.delivery.ai.presentation.dto.request.LlmCreateRequest;
 import com.sparta.delivery.ai.presentation.dto.request.LlmUpdateRequest;
 import com.sparta.delivery.ai.presentation.dto.response.LlmResponse;
 import com.sparta.delivery.user.domain.entity.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +30,7 @@ import java.util.UUID;
 public class LlmService {
 
     private final LlmRepository llmRepository;
+    private final CacheManager cacheManager;
 
     @Transactional
     public LlmResponse create(Long actorId, UserRole actorRole, LlmCreateRequest request) {
@@ -99,6 +102,16 @@ public class LlmService {
         Llm llm = getLlmOrThrow(llmId);
         validateDuplicateLlmNameOnUpdate(llm, request.llmName());
         llm.updateName(request.llmName());
+
+        if (llm.isActive()) {
+            Cache cache = cacheManager.getCache("activeLlm");
+            if (cache != null) {
+                cache.evict("current");
+            } else {
+                log.warn("activeLlm 캐시를 찾을 수 없습니다.");
+            }
+        }
+
         log.info("LLM 이름 변경 완료 - actorId={}, llmId={}, provider={}, llmName={}",
                 actorId, llm.getLlmId(), llm.getProvider(), llm.getLlmName());
 
@@ -106,6 +119,7 @@ public class LlmService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "activeLlm", key = "'current'")
     public LlmResponse activate(Long actorId, UserRole actorRole, UUID llmId) {
         validateLlmPermission(actorRole);
         Llm target = getLlmOrThrow(llmId);
@@ -163,7 +177,14 @@ public class LlmService {
     }
 
     private void deactivateCurrentActiveLlm() {
-        llmRepository.findByIsActiveTrue()
+        llmRepository.findByIsActiveTrueForUpdate()
                 .ifPresent(Llm::deactivate);
+    }
+
+    @Cacheable(cacheNames = "activeLlm", key = "'current'")
+    public ActiveLlmInfo getActiveLlm() {
+        Llm llm =  llmRepository.findByIsActiveTrue()
+                .orElseThrow(ActiveLlmNotFoundException::new);
+        return new ActiveLlmInfo(llm.getLlmId(), llm.getLlmName(), llm.getProvider());
     }
 }

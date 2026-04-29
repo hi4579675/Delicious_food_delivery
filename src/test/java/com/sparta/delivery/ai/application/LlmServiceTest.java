@@ -29,6 +29,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +41,9 @@ class LlmServiceTest {
 
     @Mock
     private LlmRepository llmRepository;
+
+    @Mock
+    private CacheManager cacheManager;
 
     @InjectMocks
     private LlmService llmService;
@@ -165,6 +170,24 @@ class LlmServiceTest {
             var response = llmService.changeLlmName(1L, UserRole.MANAGER, llmId, new LlmUpdateRequest("gpt-4.1"));
 
             assertThat(response.llmName()).isEqualTo("gpt-4.1");
+            // 비활성 LLM 이름 변경 시 캐시 evict 없음
+            then(cacheManager).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("evicts cache when active llm name is changed")
+        void changeLlmName_success_evictsCacheWhenActive() {
+            UUID llmId = UUID.randomUUID();
+            Llm llm = createLlm(llmId, "gpt-4.1-mini", LlmProvider.OPENAI, true); // 활성 LLM
+            Cache mockCache = org.mockito.Mockito.mock(Cache.class);
+            given(llmRepository.findByLlmId(llmId)).willReturn(Optional.of(llm));
+            given(llmRepository.existsIncludingDeletedByLlmName("gpt-4.1")).willReturn(false);
+            given(cacheManager.getCache("activeLlm")).willReturn(mockCache);
+
+            var response = llmService.changeLlmName(1L, UserRole.MANAGER, llmId, new LlmUpdateRequest("gpt-4.1"));
+
+            assertThat(response.llmName()).isEqualTo("gpt-4.1");
+            then(mockCache).should().evict("current");
         }
 
         @Test
@@ -193,7 +216,7 @@ class LlmServiceTest {
             Llm target = createLlm(targetId, "gpt-4.1", LlmProvider.OPENAI, false);
 
             given(llmRepository.findByLlmId(targetId)).willReturn(Optional.of(target));
-            given(llmRepository.findByIsActiveTrue()).willReturn(Optional.of(currentActive));
+            given(llmRepository.findByIsActiveTrueForUpdate()).willReturn(Optional.of(currentActive));
 
             var response = llmService.activate(1L, UserRole.MANAGER, targetId);
 

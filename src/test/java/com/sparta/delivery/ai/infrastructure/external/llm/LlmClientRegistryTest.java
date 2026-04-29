@@ -44,6 +44,21 @@ class LlmClientRegistryTest {
         }
 
         @Test
+        @DisplayName("returns google client that supports GOOGLE provider")
+        void getClient_success_google() {
+            // given
+            given(openAiClient.supports(LlmProvider.GOOGLE)).willReturn(false);
+            given(googleClient.supports(LlmProvider.GOOGLE)).willReturn(true);
+            LlmClientRegistry llmClientRegistry = new LlmClientRegistry(List.of(openAiClient, googleClient));
+
+            // when
+            LlmClient client = llmClientRegistry.getClient(LlmProvider.GOOGLE);
+
+            // then
+            assertThat(client).isEqualTo(googleClient);
+        }
+
+        @Test
         @DisplayName("throws when no client supports provider")
         void getClient_fail_whenClientNotFound() {
             // given

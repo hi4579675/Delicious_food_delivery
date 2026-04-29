@@ -1,8 +1,13 @@
 package com.sparta.delivery.ai.application;
 
+import com.sparta.delivery.ai.domain.exception.ExternalLlmCallFailedException;
 import com.sparta.delivery.ai.infrastructure.external.llm.LlmInputSnapshot;
+import com.sparta.delivery.product.domain.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -10,7 +15,8 @@ public class AiDescriptionService {
 
     private final LlmOrchestrator llmOrchestrator;
 
-    public String generateDescription(
+    @Async("llmAsyncExecutor")
+    public CompletableFuture<String> generateDescription(
             Long actorId,
             String productName,
             Integer price,
@@ -25,9 +31,19 @@ public class AiDescriptionService {
                 aiPromptText
         );
 
-        return llmOrchestrator.generate(actorId, inputSnapshot)
-                .generatedText();
+        String generatedText = llmOrchestrator.generate(actorId, inputSnapshot).generatedText();
+
+        if (generatedText == null || generatedText.isBlank()) {
+            throw new ExternalLlmCallFailedException();
+        }
+
+        String trimmed = generatedText.length() > 50
+                ? generatedText.substring(0, 50)
+                : generatedText;
+
+        return CompletableFuture.completedFuture(trimmed);
     }
+
 
     private String buildPrompt(String productName, Integer price, String aiPromptText) {
         StringBuilder promptBuilder = new StringBuilder();

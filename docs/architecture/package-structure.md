@@ -101,7 +101,7 @@
 | `JpaRepository` 인터페이스 | `{도메인}/domain/repository/` | `UserRepository` |
 | 도메인 전용 예외 | `{도메인}/domain/exception/` | `UserNotFoundException` |
 | Repository 구현체 (커스텀 쿼리) | `{도메인}/infrastructure/persistence/repository/` | `UserRepositoryImpl` |
-| 외부 API 클라이언트 | `{도메인}/infrastructure/external/` | `GeminiClient` |
+| 외부 API 클라이언트 | `{도메인}/infrastructure/external/` | `OpenAiClient`, `GeminiClient` |
 | JWT 관련 | `auth/infrastructure/jwt/` | `JwtProvider` |
 | 전역 예외 핸들러 | `common/exception/` | `GlobalExceptionHandler` |
 | 공통 응답 포맷 | `common/response/` | `ApiResponse` |
@@ -204,7 +204,7 @@ public class StoreService {
 - **쉽게**: 커스텀 쿼리 구현체, 외부 API 클라이언트
 - **들어가는 것**:
   - `persistence/repository/`: JPA 커스텀 쿼리 구현체 (QueryDSL 등이 필요할 때만)
-  - `external/`: 외부 API 클라이언트 (`GeminiClient` 등)
+  - `external/`: 외부 API 클라이언트 (`OpenAiClient`, `GeminiClient` 등)
   - `jwt/`: JWT 관련 구현 (auth 도메인만)
 - **책임**: 기본 CRUD는 Spring Data JPA 프록시가 자동 구현. 커스텀 쿼리가 필요하면 `domain/repository/`의 인터페이스에 맞는 구현체 제공
 
@@ -339,7 +339,7 @@ user/
 
 ---
 
-### 11. `ai/` — Gemini AI 연동
+### 11. `ai/` — LLM 연동
 
 ```
 ai/
@@ -353,10 +353,13 @@ ai/
     ├── persistence/
     │   └── repository/
     └── external/
-        └── gemini/
+        └── llm/
+            ├── openai/
+            └── gemini/
 ```
 
-> - `infrastructure/external/gemini/` : Gemini API 호출 클라이언트
+> - `infrastructure/external/llm/openai/` : OpenAI 호출 클라이언트
+> - `infrastructure/external/llm/gemini/` : Google Gemini 호출 클라이언트
 > - 입력 글자수 제한 + "50자 이하로" 자동 삽입은 `application/` 서비스에서 처리
 
 ---

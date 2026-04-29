@@ -272,6 +272,30 @@ class RegionServiceTest {
         }
 
         @Test
+        @DisplayName("비활성 지역은 공개 단건 조회에서 숨긴다")
+        void getRegion_fail_whenInactive() {
+            // given
+            UUID regionId = UUID.randomUUID();
+
+            Region inactiveRegion = Region.create(
+                    "1100000000",
+                    "서울특별시",
+                    null,
+                    1,
+                    false
+            );
+
+            given(regionRepository.findByRegionId(regionId)).willReturn(Optional.of(inactiveRegion));
+
+            // when & then
+            assertThatThrownBy(() -> regionService.getRegion(regionId))
+                    .isInstanceOf(RegionNotFoundException.class)
+                    .hasMessageContaining("지역");
+
+            then(regionRepository).should().findByRegionId(regionId);
+        }
+
+        @Test
         @DisplayName("keyword가 없으면 전체 지역 목록을 조회한다")
         void searchRegions_success_withoutKeyword() {
             // given
@@ -292,7 +316,7 @@ class RegionServiceTest {
             );
 
             Pageable pageable = PageRequest.of(0, 10);
-            given(regionRepository.findAll(pageable))
+            given(regionRepository.findByIsActiveTrue(pageable))
                     .willReturn(new PageImpl<>(List.of(seoul, busan), pageable, 2));
 
             // when
@@ -306,7 +330,7 @@ class RegionServiceTest {
             assertThat(responses.page()).isEqualTo(0);
             assertThat(responses.size()).isEqualTo(10);
 
-            then(regionRepository).should().findAll(pageable);
+            then(regionRepository).should().findByIsActiveTrue(pageable);
         }
 
         @Test
@@ -324,7 +348,7 @@ class RegionServiceTest {
             );
 
             Pageable pageable = PageRequest.of(0, 10);
-            given(regionRepository.findByRegionNameContaining("종로", pageable))
+            given(regionRepository.findByRegionNameContainingAndIsActiveTrue("종로", pageable))
                     .willReturn(new PageImpl<>(List.of(jongno), pageable, 1));
 
             // when
@@ -335,7 +359,7 @@ class RegionServiceTest {
             assertThat(responses.content().get(0).regionName()).isEqualTo("종로구");
             assertThat(responses.content().get(0).parentId()).isEqualTo(parentId);
 
-            then(regionRepository).should().findByRegionNameContaining("종로", pageable);
+            then(regionRepository).should().findByRegionNameContainingAndIsActiveTrue("종로", pageable);
         }
 
         @Test
@@ -351,7 +375,7 @@ class RegionServiceTest {
             );
 
             Pageable pageable = PageRequest.of(0, 10);
-            given(regionRepository.findByRegionNameContaining("종로", pageable))
+            given(regionRepository.findByRegionNameContainingAndIsActiveTrue("종로", pageable))
                     .willReturn(new PageImpl<>(List.of(jongno), pageable, 1));
 
             // when
@@ -361,7 +385,7 @@ class RegionServiceTest {
             assertThat(responses.content()).hasSize(1);
             assertThat(responses.content().get(0).regionName()).isEqualTo("종로구");
 
-            then(regionRepository).should().findByRegionNameContaining("종로", pageable);
+            then(regionRepository).should().findByRegionNameContainingAndIsActiveTrue("종로", pageable);
         }
 
         @Test
@@ -384,7 +408,7 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.findByParentIdIsNull()).willReturn(List.of(seoul, busan));
+            given(regionRepository.findByParentIdIsNullAndIsActiveTrue()).willReturn(List.of(seoul, busan));
 
             // when
             var responses = regionService.getRootRegions();
@@ -395,7 +419,7 @@ class RegionServiceTest {
                     .extracting("regionName")
                     .containsExactly("서울특별시", "부산광역시");
 
-            then(regionRepository).should().findByParentIdIsNull();
+            then(regionRepository).should().findByParentIdIsNullAndIsActiveTrue();
         }
 
         @Test
@@ -412,7 +436,7 @@ class RegionServiceTest {
                     true
             );
 
-            given(regionRepository.findByParentId(parentId)).willReturn(List.of(jongno));
+            given(regionRepository.findByParentIdAndIsActiveTrue(parentId)).willReturn(List.of(jongno));
 
             // when
             var responses = regionService.getChildRegions(parentId);
@@ -422,7 +446,7 @@ class RegionServiceTest {
             assertThat(responses.get(0).regionName()).isEqualTo("종로구");
             assertThat(responses.get(0).parentId()).isEqualTo(parentId);
 
-            then(regionRepository).should().findByParentId(parentId);
+            then(regionRepository).should().findByParentIdAndIsActiveTrue(parentId);
         }
     }
 

@@ -1,4 +1,4 @@
-package com.sparta.delivery.ai.infrastructure.external.llm.openai;
+package com.sparta.delivery.ai.infrastructure.external.llm.gemini;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,25 +11,25 @@ import com.sparta.delivery.ai.infrastructure.external.llm.LlmGenerateResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.google.genai.GoogleGenAiChatModel;
+import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-public class OpenAiClient implements LlmClient {
+public class GeminiClient implements LlmClient {
 
     private final ChatClient chatClient;
     private final ObjectMapper objectMapper;
 
-    public OpenAiClient(OpenAiChatModel chatModel, ObjectMapper objectMapper) {
+    public GeminiClient(GoogleGenAiChatModel chatModel, ObjectMapper objectMapper) {
         this.chatClient = ChatClient.create(chatModel);
         this.objectMapper = objectMapper;
     }
 
     @Override
     public boolean supports(LlmProvider provider) {
-        return provider == LlmProvider.OPENAI;
+        return provider == LlmProvider.GOOGLE;
     }
 
     @Override
@@ -37,9 +37,9 @@ public class OpenAiClient implements LlmClient {
         try {
             ChatResponse chatResponse = chatClient
                     .prompt()
-                    .options(OpenAiChatOptions.builder()
+                    .options(GoogleGenAiChatOptions.builder()
                             .model(llm.llmName())
-                            .maxCompletionTokens(40)
+//                            .maxOutputTokens(40)
                             .build())
                     .system("""
                         당신은 음식 배달 플랫폼의 상품 설명 작성 전문가입니다.
@@ -56,7 +56,7 @@ public class OpenAiClient implements LlmClient {
             try {
                 rawResponse = objectMapper.writeValueAsString(chatResponse);
             } catch (JsonProcessingException e) {
-                log.warn("[OpenAI Client] ChatResponse Serialization 실패: model={}, error={}",
+                log.warn("[Gemini Client] ChatResponse Serialization 실패: model={}, error={}",
                         llm.llmName(), e.getMessage());
                 rawResponse = null;
             }
