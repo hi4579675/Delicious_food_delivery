@@ -1,32 +1,28 @@
 # 인프라 명세
 
-> **이 문서를 보면**: 우리 서비스가 **어떤 서버/네트워크/자원** 위에 구성되어 있는지 파악 가능.
+> **이 문서를 보면**: 현재 운영 테스트 환경이 어떤 서버/네트워크/컨테이너 구조로 구성되어 있는지 파악할 수 있습니다.
 >
-> **언제 다시 보나요**: 인스턴스 변경 시, 보안그룹/도메인 변경 시, 새 팀원 온보딩 시.
+> **언제 다시 보나요**: 인스턴스 변경 시, 보안그룹 수정 시, 배포 구조를 새 팀원에게 설명할 때.
 
-> 🔖 **용어 주의**
-> 이 문서의 "인프라"는 **배포 환경**(EC2, Docker 컨테이너, 네트워크)을 뜻합니다.
-> [패키지·계층 구조 가이드](../architecture/package-structure.md)의 `infrastructure/` 폴더는 **코드 계층 이름**으로 이름만 같고 다른 개념입니다.
->
-> **배포 파이프라인·Dockerfile·GitHub Actions·롤백**은 [배포 파이프라인](./deployment.md) 참고.
+> 🔖 배포 워크플로우, Dockerfile, GitHub Actions, Secrets, 롤백은 [배포 파이프라인](./deployment.md) 참고.
 
 ---
 
 ## 한 줄 요약
 
-**AWS EC2 1대**에 **Docker**로 Spring Boot / PostgreSQL / Redis 컨테이너가 함께 올라간다. Gemini는 외부 API로 호출.
+현재 운영 테스트 환경은 **AWS EC2 1대** 위에서 **Nginx + Docker(app / PostgreSQL / Redis)** 구조로 동작하며, 외부 AI 연동은 **OpenAI API**를 사용합니다.
 
 ---
 
 ## 목차
 
 - [1. 배포 토폴로지](#1-배포-토폴로지)
-- [2. EC2 스펙](#2-ec2-스펙)
+- [2. EC2 구성](#2-ec2-구성)
 - [3. 네트워크 / 보안](#3-네트워크--보안)
 - [4. 컨테이너 구성](#4-컨테이너-구성)
 - [5. 도메인 / HTTPS](#5-도메인--https)
 - [6. 외부 API 연결 지점](#6-외부-api-연결-지점)
-- [7. 팀 결정 체크리스트](#7-팀-결정-체크리스트)
+- [7. 현재 한계와 개선 포인트](#7-현재-한계와-개선-포인트)
 
 ---
 
@@ -34,124 +30,161 @@
 
 ![배포 구조 개요](../assets/infrastructure.webp)
 
-> 위는 개요도입니다. 실제 내부 구성은 아래 "EC2 내부 구성 + 트래픽 흐름"을 따릅니다.
+> 위 이미지는 개요도입니다. 실제 운영 테스트 환경은 아래 텍스트 구조를 기준으로 이해하면 됩니다.
 
-### EC2 내부 구성 + 트래픽 흐름
+### 현재 구조
 
+```text
+[사용자]
+   |
+   v   HTTP(80)
+[EC2 Public IP]
+   |
+   v
+Nginx (host)
+   |
+   v   proxy_pass http://127.0.0.1:8080
+Spring Boot app container
+   | \
+   |  \--> Redis container
+   |
+   +----> PostgreSQL container
+
+Spring Boot app -> OpenAI API
+GitHub Actions -> GHCR push -> EC2 SSH deploy
+EC2 -> GHCR pull
 ```
- [사용자]
-    ↓  HTTP/HTTPS
- [도메인/IP]              ← TBD: 도메인 도입 여부
-    ↓
-┌─── EC2 (단일 인스턴스, ap-northeast-2) ───────────────────┐
-│ 보안그룹: 인바운드 80 / 443 / 22(관리자 IP)                 │
-│                                                             │
-│    Nginx (80/443)        ← TBD: 도입 여부                   │
-│       │                                                     │
-│       ▼                                                     │
-│    Spring Boot (8080) ─────────────────→ Gemini API         │
-│       │         │                        (외부 API)         │
-│       ▼         ▼                                           │
-│    Postgres   Redis      ← 외부 포트 노출 X, 내부 통신만    │
-│    (5432)     (6379)                                        │
-└─────────────────────────────────────────────────────────────┘
-```
 
-### 구조 요약
-
-- **운영**: 단일 EC2에 Spring Boot + PostgreSQL + Redis 컨테이너 함께 기동
-- **로컬 개발**: PostgreSQL / Redis만 Docker, Spring Boot는 호스트에서 `bootRun`
+즉:
+- 외부 요청은 **Nginx**가 받음
+- 앱은 **Docker 컨테이너**로 동작
+- DB와 Redis도 같은 EC2 내부 Docker 네트워크에서 운영
 
 ---
 
-## 2. EC2 스펙
+## 2. EC2 구성
 
-| 항목 | 값 |
+현재 기준:
+
+| 항목 | 내용 |
 |---|---|
-| 인스턴스 타입 | **TBD** (t3.small 예상) |
 | 리전 | ap-northeast-2 (서울) |
-| OS | Ubuntu 22.04 LTS |
-| 볼륨 | **TBD** (gp3 30GB 예상) |
-| 개수 | 1대 (모놀리스) |
-| DB 분리 | **TBD** — 현재는 EC2 내부 Docker, 확장 시 RDS로 분리 가능 |
+| OS | Ubuntu 22.04 |
+| 서버 수 | 1대 |
+| 역할 | Nginx 호스트 + Docker 실행 노드 |
+| 배포 경로 | `/home/ubuntu/app` |
+
+이 문서는 **단일 EC2 기준 운영 테스트 환경**을 설명합니다.  
+장기적으로는 RDS 분리, 다중 서버, 오토스케일링 등으로 확장할 수 있지만 현재는 범위 밖입니다.
 
 ---
 
 ## 3. 네트워크 / 보안
 
-### 보안그룹 (인바운드 규칙)
+### 보안그룹
 
-| 포트 | 허용 범위 | 용도 |
+현재 운영 테스트 기준:
+
+| 포트 | 용도 | 상태 |
 |---|---|---|
-| 22 | 관리자 IP만 | SSH 접근 |
-| 80 | 0.0.0.0/0 | HTTP (HTTPS 도입 시 리다이렉트용) |
-| 443 | 0.0.0.0/0 | HTTPS (TBD) |
+| 22 | SSH 배포 / 서버 접근 | 사용 중 |
+| 80 | HTTP | 사용 중 |
+| 443 | HTTPS | 예정 |
+| 5432 | PostgreSQL | 외부 미노출 |
+| 6379 | Redis | 외부 미노출 |
 
-- **PostgreSQL(5432), Redis(6379)**: 외부 노출 X, Docker 네트워크 내부 통신만 허용
+설명:
+- PostgreSQL, Redis는 **외부에서 직접 접근하지 않음**
+- 앱도 외부에 직접 노출하지 않고 `127.0.0.1:8080`만 사용
+- 외부 노출은 Nginx가 담당
 
-### SSH 접근
+### 민감 정보 관리
 
-- EC2 키페어(`*.pem`) 기반
-- 키 파일은 팀원 개별 관리, **Git 커밋 금지**
+운영 비밀값은 코드에 두지 않고 환경변수로 관리합니다.
 
-### 민감 정보 (운영 환경변수)
+대표 값:
+- `POSTGRES_PASSWORD`
+- `REDIS_PASSWORD`
+- `JWT_SECRET`
+- `OPENAI_API_KEY`
 
-`DB_PASSWORD`, `JWT_SECRET`, `OPENAI_API_KEY`, `REDIS_PASSWORD`는 **환경 변수로만** 주입.
-- 코드/Git 하드코딩 금지
-- 구체적 전달 경로(GitHub Secrets → EC2)는 [배포 파이프라인 #Secrets 관리](./deployment.md#4-secrets-관리) 참고
+실제 전달 경로는 [배포 파이프라인](./deployment.md#4-secrets-및-환경-변수) 참고.
 
 ---
 
 ## 4. 컨테이너 구성
 
-현재 `docker-compose.yml`에 정의된 서비스는 **PostgreSQL / Redis 2개**.
-Backend(Spring Boot) 컨테이너는 운영 배포 시 추가 예정 — [배포 파이프라인](./deployment.md) 참고.
+현재 구성:
 
-| 컨테이너 | 이미지 | 포트 | 볼륨 |
-|---|---|---|---|
-| postgres | `postgres:16-alpine` | 5432 | `./docker-data/postgres` |
-| redis | `redis:7-alpine` | 6379 | `./docker-data/redis` |
-| (예정) backend | `delivery:<tag>` | 8080 | — |
+| 컨테이너 | 역할 | 외부 노출 |
+|---|---|---|
+| `delivery-app` | Spring Boot API 서버 | `127.0.0.1:8080` |
+| `delivery-postgres` | PostgreSQL | 없음 |
+| `delivery-redis` | Redis | 없음 |
+
+### 특징
+
+- `delivery-app`
+  - `SPRING_PROFILES_ACTIVE=prod`
+  - Nginx가 `127.0.0.1:8080`으로 프록시
+- `delivery-postgres`
+  - Docker volume으로 데이터 유지
+- `delivery-redis`
+  - 비밀번호 기반 실행
+
+즉 **app / db / cache가 모두 같은 EC2 안에서 Docker로 함께 동작**하는 구조입니다.
 
 ---
 
 ## 5. 도메인 / HTTPS
 
-**TBD** — 팀 결정 선택지:
+### 현재 상태
 
-| 선택지 | 설명 | 비용 | 복잡도 |
-|---|---|---|---|
-| A. 도입하지 않음 | EC2 퍼블릭 IP 직통 | 0 | 낮음 |
-| B. Nginx + Let's Encrypt | 무료 SSL, 간단 | 0 | 중간 |
-| C. Route53 + ACM + ALB | 완전 자동화 | 월 ~$20 | 높음 |
+- 외부 접근은 **HTTP(80)** 기준으로 동작
+- Swagger 예시:
+  - `http://<EC2-IP>/swagger-ui.html`
+
+### 예정 상태
+
+- HTTPS(443)는 아직 미적용
+- 추후 필요 작업:
+  - 도메인 연결
+  - SSL 인증서 발급
+  - Nginx `443 ssl` 설정
+  - `80 -> 443` 리다이렉트
+
+즉 현재는 **HTTP 기반 운영 테스트 환경**, HTTPS는 **예정**입니다.
 
 ---
 
 ## 6. 외부 API 연결 지점
 
-### Gemini API
+현재 외부 AI 연동은 **OpenAI API** 기준으로 동작합니다.
 
-- **연결 위치**: 코드 상 `ai/infrastructure/external/gemini/GeminiClient` ([패키지·계층 구조 가이드](../architecture/package-structure.md) 참고)
-- **네트워크**: EC2 → 인터넷 → Gemini API (아웃바운드 허용)
-- **키 관리**: `OPENAI_API_KEY` 환경변수
-- **운영 동작**(timeout / 에러 처리 / 입력 한도 등): [배포 파이프라인 #외부 API 운영 동작](./deployment.md#6-외부-api-운영-동작) 참고
+운영 방식:
+- EC2의 앱 컨테이너가 인터넷 아웃바운드로 OpenAI API 호출
+- API 키는 `OPENAI_API_KEY` 환경변수 사용
 
 ---
 
-## 7. 팀 결정 체크리스트
+## 7. 현재 한계와 개선 포인트
 
-회의 전 각자 의견 정리 필요. 이 항목들이 확정되어야 위 `TBD`가 채워짐.
+현재 구조의 한계:
+- 단일 EC2 구조라 이중화 없음
+- SSH 기반 배포라 보안그룹 / 키 관리 부담이 있음
+- PostgreSQL이 EC2 내부 컨테이너라 장애 시 영향 범위가 큼
+- HTTPS 미적용
 
-- [ ] EC2 인스턴스 타입 + 월 예산
-- [ ] DB 위치 — EC2 내부 Docker 유지 vs RDS 분리
-- [ ] Nginx 도입 여부
-- [ ] 도메인/HTTPS 전략 (A / B / C)
-- [ ] SSH 키 관리 방식 (팀원 개별? 공용?)
+향후 개선 후보:
+- HTTPS 적용
+- DB 마이그레이션 도구 도입
+- RDS 분리 검토
+- SSH 대신 SSM / self-hosted runner 검토
+- 로그/모니터링 체계 강화
 
 ---
 
 ## 관련 문서
 
-- [배포 파이프라인](./deployment.md) — CI/CD, Dockerfile, 롤백, 외부 API 운영 동작
-- [패키지·계층 구조 가이드](../architecture/package-structure.md) — 코드 계층 구조 (`infrastructure/` 계층)
+- [배포 파이프라인](./deployment.md)
 - [프로젝트 개요](../overview.md)
