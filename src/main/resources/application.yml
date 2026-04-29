@@ -20,10 +20,12 @@ spring:
       chat:
         options:
           temperature: 1.0
-
-    gemini:
-      api-key: ${GEMINI_API_KEY:dummy-key}
-      max-input-length: 500
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:dummy-key}
+        chat:
+          options:
+            temperature: 1.0
 
 springdoc:
   swagger-ui:
