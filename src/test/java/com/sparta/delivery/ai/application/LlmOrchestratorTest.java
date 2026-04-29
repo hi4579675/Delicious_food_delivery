@@ -104,6 +104,43 @@ class LlmOrchestratorTest {
         }
 
         @Test
+        @DisplayName("generates text with google gemini active llm")
+        void generate_success_withGeminiLlm() throws Exception {
+            // given
+            UUID llmId = UUID.randomUUID();
+            Long actorId = 1L;
+            String prompt = "prompt";
+            LlmInputSnapshot llmInputSnapshot = new LlmInputSnapshot(prompt, "Americano", 4500, "고소한 맛을 강조해줘");
+            String inputSnapshot = "{\"prompt\":\"prompt\"}";
+            ActiveLlmInfo activeLlm = new ActiveLlmInfo(llmId, "gemini-2.0-flash", LlmProvider.GOOGLE);
+            LlmGenerateResponse llmGenerateResponse = new LlmGenerateResponse(
+                    "generated text",
+                    "{\"result\":\"ok\"}",
+                    "STOP"
+            );
+
+            given(llmService.getActiveLlm()).willReturn(activeLlm);
+            given(objectMapper.writeValueAsString(any(LlmInputSnapshot.class))).willReturn(inputSnapshot);
+            given(llmClientRegistry.getClient(LlmProvider.GOOGLE)).willReturn(llmClient);
+            given(llmClient.generate(eq(activeLlm), any())).willReturn(llmGenerateResponse);
+            given(llmCallRepository.save(any(LlmCall.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            LlmGenerateResponse response = llmOrchestrator.generate(actorId, llmInputSnapshot);
+
+            // then
+            assertThat(response).isEqualTo(llmGenerateResponse);
+
+            ArgumentCaptor<LlmCall> llmCallCaptor = ArgumentCaptor.forClass(LlmCall.class);
+            then(llmCallRepository).should().save(llmCallCaptor.capture());
+
+            LlmCall savedCall = llmCallCaptor.getValue();
+            assertThat(savedCall.getLlmId()).isEqualTo(activeLlm.llmId());
+            assertThat(savedCall.getFinishReason()).isEqualTo("STOP");
+            assertThat(savedCall.getGeneratedText()).isEqualTo("generated text");
+        }
+
+        @Test
         @DisplayName("throws when active llm does not exist")
         void generate_fail_whenActiveLlmNotFound() {
             // given
