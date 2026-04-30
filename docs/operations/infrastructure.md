@@ -28,7 +28,7 @@
 
 ## 1. 배포 토폴로지
 
-![배포 구조 개요](../assets/infrastructure.webp)
+![배포 구조 개요](../assets/infrastructure.png)
 
 > 위 이미지는 개요도입니다. 실제 운영 테스트 환경은 아래 텍스트 구조를 기준으로 이해하면 됩니다.
 
